@@ -1,0 +1,133 @@
+<?php
+
+/**
+ * @file
+ * Containes the database tables required by the OneAll Social Login module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function single_sign_on_schema() {
+
+  // User Token Storage.
+  $schema['oasl_user'] = [
+    'description' => 'Used to link social network profiles to authmap entries.',
+    'fields' => [
+      'oasl_user_id' => [
+        'description' => 'The primary key of this table.',
+        'type' => 'serial',
+        'length' => '11',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'user_id' => [
+        'description' => 'Foreign key to link entries of this table to entries in the Drupal user table.',        
+        'type' => 'int',
+        'length' => '10',
+        'unsigned' => TRUE,
+        'not null' => false,
+      ],
+      'user_token' => [
+        'description' => 'Unique user_token for a user, returned by the OneAll API.',
+        'type' => 'varchar',
+        'length' => 48,
+        'not null' => TRUE,
+      ],
+      'date_added' => [
+        'description' => 'Adding date',
+        'type' => 'datetime',
+        'length' => '64',
+        'not null' => TRUE,
+      ],
+    ],
+    'indexes' => [
+      'user_id' => [
+        'customer_id',
+      ],
+      'user_token' => [
+        'user_token',
+      ],
+    ],
+    'foreign keys' => [
+      'user_id' => [
+        'table' => 'users',
+        'columns' => [
+          'uid' => 'uid',
+        ],
+      ],
+    ],
+    'primary key' => [
+      'oasl_user_id',
+    ],
+  ];
+
+  // Identity Token Storage.
+  $schema['oasl_identity'] = [
+    'description' => 'Used to link social network profiles to authmap entries.',
+    'fields' => [
+      'oasl_identity_id' => [
+        'description' => 'The primary key of this table.',        
+        'type' => 'serial',
+        'length' => '11',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ],
+      'oasl_user_id' => [
+        'description' => 'Foreign key to link entries of this table to entries in the oasl_user table.',        
+        'type' => 'int',
+        'default' => 0,
+        'length' => '11',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ],
+      'identity_token' => [
+        'description' => 'Unique identity_token for a social network profile, returned by the OneAll API.',
+        'type' => 'varchar',
+        'length' => 48,
+        'not null' => TRUE,
+        'default' => ''
+      ],
+      'identity_provider' => [
+        'description' => 'Social network provider (Facebook, Twitter ...) of this identity.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => ''
+      ],
+      'num_logins' => [
+        'description' => 'Number of logins',
+        'type' => 'int',
+        'length' => '11',
+        'not null' => TRUE,
+        'default' => 0
+      ],
+      'date_added' => [
+        'type' => 'datetime',
+        'not null' => TRUE
+      ],
+      'date_updated' => [
+        'type' => 'datetime',
+        'not null' => TRUE
+      ],
+    ],
+    'indexes' => [
+      'oasl_identity_id' => [
+        'oasl_identity_id',
+      ]
+    ],
+    'primary key' => [
+      'oasl_identity_id',
+    ],
+    'unique key' => [
+      'identity_link' => [
+        'oasl_identity_id',
+        'identity_token'
+      ],
+      'identity_token'
+    ],
+  ];
+
+
+  return $schema;
+}

@@ -1,0 +1,18 @@
+
+single_sign_on.admin_settings:
+  path: /admin/config/people/single_sign_on
+  defaults:
+    _title: 'OneAll Single-Sign-On Admin'
+    _form: \Drupal\single_sign_on\Form\SingleSignOnAdminSettings
+  requirements:
+    _permission: 'administer site configuration'
+
+
+single_sign_on.controller:
+  path: /single_sign_on/callback
+  defaults:
+    _title: 'OneAll Single-Sign-On Callback'
+    _controller: '\Drupal\single_sign_on\Controller\SingleSignOnController::callbackHandler'
+  requirements:
+    _access: 'TRUE'
+    

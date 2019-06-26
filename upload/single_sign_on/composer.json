@@ -1,5 +1,5 @@
 {
-    "name": "drupal/social_login",
+    "name": "drupal/single_sign_on",
     "description": "Professionally developed and free Drupal module that allows your users to register and login with their existing accounts from 40+ social networks.",
     "type": "drupal-module",
     "homepage": "https://www.oneall.com/",

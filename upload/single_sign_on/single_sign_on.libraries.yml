@@ -2,6 +2,6 @@ configuration:
   version: 2.x
   css:
     theme:
-      css/social_login.admin.css: {}
+      css/single_sign_on.admin.css: {}
 
     
