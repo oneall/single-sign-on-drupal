@@ -16,3 +16,11 @@ single_sign_on.controller:
   requirements:
     _access: 'TRUE'
     
+single_sign_on.get_sso_token:
+  path: '/ajax/{controller}/{function}'
+  defaults:
+    _title: 'Get SSO'
+    _controller: '\Drupal\single_sign_on\Controller\SingleSignOnController::call_ajax'
+  methods:  [GET]
+  requirements:
+    _permission: 'access content'

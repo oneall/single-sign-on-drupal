@@ -2,7 +2,6 @@
 
 namespace Drupal\single_sign_on\Form;
 
-use Drupal\Component\Utility\Html;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 
@@ -192,216 +191,60 @@ class SingleSignOnAdminSettings extends ConfigFormBase
         // Login page settings.
         $form['single_sign_on_settings_login_page'] = [
             '#type' => 'fieldset',
-            '#title' => $this->t('Login Page Settings')
+            '#title' => $this->t('Single Sign-On Settings')
         ];
 
-        $form['single_sign_on_settings_login_page']['login_page_icons'] = [
+        $form['single_sign_on_settings_login_page']['automatic_account_creation'] = [
             '#type' => 'select',
-            '#title' => $this->t('Social Login Icons'),
-            '#description' => $this->t('Allows the users to login either with their social network account or with their already existing account.'),
+            '#title' => $this->t('Automatic Account Creation'),
+            '#description' => $this->t('If enabled, the plugin automatically creates new user accounts for SSO users that visit the blog but do not have an account yet. These users are then automatically logged in with the new account.'),
             '#options' => [
-                'above' => $this->t('Show the Social Login icons above the existing login form'),
-                'below' => $this->t('Show the Social Login icons below the existing login form (Default, recommended)'),
-                'disable' => $this->t('Do not show the Social Login icons on the login page')
+                'enabled' => $this->t('Enable automatic account creation (Default)'),
+                'disabled' => $this->t('Disable automatic account creation')
             ],
-            '#default_value' => (empty($settings['login_page_icons']) ? 'below' : $settings['login_page_icons'])
+            '#default_value' => (empty($settings['automatic_account_creation']) ? 'enabled' : $settings['automatic_account_creation'])
         ];
 
-        $form['single_sign_on_settings_login_page']['login_page_caption'] = [
+        $form['single_sign_on_settings_login_page']['automatic_account_link'] = [
+            '#type' => 'select',
+            '#title' => $this->t('Automatic Account Link'),
+            '#description' => $this->t('If enabled, the plugin tries to link SSO users that visit the blog to already existing user accounts. To link accounts the email address of the SSO user is matched against the email addresses of the existing users.'),
+            '#options' => [
+                'nobody' => $this->t('Disable automatic account link'),
+                'everybody' => $this->t('Enable automatic link for all types of accounts'),
+                'everybody_except_admin' => $this->t('Enable automatic link for all types of accounts, except the admin account (Default)')
+            ],
+            '#default_value' => (empty($settings['automatic_account_link']) ? 'everybody_except_admin' : $settings['automatic_account_link'])
+        ];
+
+        $form['single_sign_on_settings_login_page']['account_reminder'] = [
+            '#type' => 'select',
+            '#title' => $this->t('Account Reminder'),
+            '#description' => $this->t('If enabled, the plugin will display a popup reminding the SSO of his account if an existing account has been found, but the user could not be logged in by the plugin (eg. if Automatic Account Link is disabled).'),
+            '#options' => [
+                'enabled' => $this->t('Enable account reminder (Default)'),
+                'disabled' => $this->t('Disable account reminder')
+            ],
+            '#default_value' => (empty($settings['account_reminder']) ? 'enabled' : $settings['account_reminder'])
+        ];
+
+        $form['single_sign_on_settings_login_page']['logout_everywhere'] = [
+            '#type' => 'select',
+            '#title' => $this->t('Destroy Session On Logout'),
+            '#description' => $this->t('If enabled, the plugin destroys the user\'s SSO session whenever he logs out from WordPress. If you disable this setting, then do not use an empty value for the login delay, otherwise the user will be re-logged in instantly.'),
+            '#options' => [
+                '1' => $this->t('Yes. Destroy the SSO session on logout (Default, Recommended)'),
+                '0' => $this->t('No. Keep the SSO session on logout.')
+            ],
+            '#default_value' => (int) $settings['logout_everywhere']
+        ];
+
+        $form['single_sign_on_settings_login_page']['logout_wait_relogin'] = [
             '#type' => 'textfield',
-            '#title' => $this->t('Social Login Icons: Caption [Leave empty for none]'),
-            '#default_value' => (!isset($settings['login_page_caption']) ? $this->t('Login with:') : $settings['login_page_caption']),
-            '#size' => 60,
-            '#maxlength' => 60,
-            '#description' => $this->t('This is the title displayed above the social network icons.')
+            '#title' => $this->t('Re-Login Delay (Seconds)'),
+            '#description' => $this->t('Whenever a user logs out, the plugin will not retry to login that user for the entered period. Please enter a positive integer or leave empty in order to disable.'),
+            '#default_value' => $settings['logout_wait_relogin']
         ];
-
-        // Registration page settings.
-        $form['single_sign_on_settings_registration_page'] = [
-            '#type' => 'fieldset',
-            '#title' => $this->t('Registration Page Settings')
-        ];
-
-        $form['single_sign_on_settings_registration_page']['registration_page_icons'] = [
-            '#type' => 'select',
-            '#title' => $this->t('Social Login Icons'),
-            '#description' => $this->t('Allows the users to register by using either their social network account or by creating a new account.'),
-            '#options' => [
-                'above' => $this->t('Show the Social Login icons above the existing login form (Default, recommended)'),
-                'below' => $this->t('Show the Social Login icons below the existing login form'),
-                'disable' => $this->t('Do not show the Social Login icons on the registration page')
-            ],
-            '#default_value' => (empty($settings['registration_page_icons']) ? 'above' : $settings['registration_page_icons'])
-        ];
-
-        $form['single_sign_on_settings_registration_page']['registration_page_caption'] = [
-            '#type' => 'textfield',
-            '#title' => $this->t('Social Login Icons: Caption [Leave empty for none]'),
-            '#default_value' => (!isset($settings['registration_page_caption']) ? $this->t('Instantly register with:') : $settings['registration_page_caption']),
-            '#size' => 60,
-            '#maxlength' => 60,
-            '#description' => $this->t('This is the title displayed above the social network icons.')
-        ];
-
-        // Edit profile page settings.
-        $form['single_sign_on_settings_profile_page'] = [
-            '#type' => 'fieldset',
-            '#title' => $this->t('Edit Profile Page Settings')
-        ];
-
-        $form['single_sign_on_settings_profile_page']['profile_page_icons'] = [
-            '#type' => 'select',
-            '#title' => $this->t('Social Login Icons'),
-            '#description' => $this->t('Allows the users to link a social network account to their regular account.'),
-            '#options' => [
-                'above' => $this->t('Show the Social Login icons above the profile settings'),
-                'below' => $this->t('Show the Social Login icons below the profile settings (Default, recommended)'),
-                'disable' => $this->t('Do not show the Social Login icons on the profile page')
-            ],
-            '#default_value' => (empty($settings['profile_page_icons']) ? 'below' : $settings['profile_page_icons'])
-        ];
-
-        $form['single_sign_on_settings_profile_page']['profile_page_caption'] = [
-            '#type' => 'textfield',
-            '#title' => $this->t('Social Login Icons: Caption [Leave empty for none]'),
-            '#default_value' => (!isset($settings['profile_page_caption']) ? $this->t('Link your account to a social network') : $settings['profile_page_caption']),
-            '#size' => 60,
-            '#maxlength' => 60,
-            '#description' => $this->t('This is the title displayed above the social network icons.')
-        ];
-
-        // Account creation settings.
-        $form['single_sign_on_settings_account_creation'] = [
-            '#type' => 'fieldset',
-            '#title' => $this->t('Account creation settings')
-        ];
-
-        $form['single_sign_on_settings_account_creation']['registration_approval'] = [
-            '#type' => 'select',
-            '#title' => $this->t('Do user that register with Social Login have to be approved by an administrator?'),
-            '#description' => $this->t('Manual approval should not be required as Social Login eliminates SPAM issues almost entirely.'),
-            '#options' => [
-                'inherit' => $this->t('Use the system-wide setting from the Drupal account settings (Default)'),
-                'disable' => $this->t('Automatically approve users that register with Social Login'),
-                'enable' => $this->t('Always require administrators to approve users that register with Social Login')
-            ],
-            '#default_value' => (empty($settings['registration_approval']) ? 'inherit' : $settings['registration_approval'])
-        ];
-
-        $form['single_sign_on_settings_account_creation']['registration_retrieve_avatars'] = [
-            '#type' => 'select',
-            '#title' => $this->t('Retrieve the user picture from the social network when a user registers with Social Login?'),
-            '#description' => $this->t('Social Login grabs the user picture from the social network, saves it locally and uses it as avatar for the new account.'),
-            '#options' => [
-                'enable' => $this->t('Yes, retrieve the user picture from the social network and use it as avatar for the user (Default)'),
-                'disable' => $this->t('No, do not retrieve the user picture from the social network')
-            ],
-            '#default_value' => (empty($settings['registration_retrieve_avatars']) ? 'enable' : $settings['registration_retrieve_avatars'])
-        ];
-
-        $form['single_sign_on_settings_account_creation']['registration_method'] = [
-            '#type' => 'select',
-            '#title' => $this->t('Automatically create a new user account when a user registers with Social Login?'),
-            '#description' => $this->t('If a user registers for example with Facebook, Social Login grabs his Facebook profile data and uses it to simply the user registration.'),
-            '#options' => [
-                'manual' => $this->t('Do not create new accounts automatically, just pre-populate the default registration form and let users complete the registration manually (Default)'),
-                'auto_random_email' => $this->t('Automatically create new user accounts and generate a bogus email address if the social network provides no email address'),
-                'auto_manual_email' => $this->t('Automatically create new user accounts BUT fall back to the default registration form when the social network provides no email address')
-            ],
-            '#default_value' => (empty($settings['registration_method']) ? 'manual' : $settings['registration_method'])
-        ];
-
-        // Redirection settings.
-        $form['single_sign_on_settings_redirection'] = [
-            '#type' => 'fieldset',
-            '#title' => $this->t('Redirection settings')
-        ];
-
-        $form['single_sign_on_settings_redirection']['redirect_login_path'] = [
-            '#type' => 'select',
-            '#default_value' => (empty($settings['redirect_login_path']) ? 'home' : $settings['redirect_login_path']),
-            '#title' => $this->t('When existing users login with Social Login ...'),
-            '#options' => [
-                'home' => $this->t('... redirect them to the homepage (Default)'),
-                'same' => $this->t('... redirect them back to the same page'),
-                'custom' => $this->t('... redirect them to the url below:')
-            ]
-        ];
-
-        $form['single_sign_on_settings_redirection']['redirect_login_custom_uri'] = [
-            '#type' => 'textfield',
-            '#default_value' => (!isset($settings['redirect_login_custom_uri']) ? '' : $settings['redirect_login_custom_uri']),
-            '#size' => 100,
-            '#maxlength' => 100,
-            '#description' => $this->t('You can use the placeholder {userid} in the URL. It is automatically replaced by the id of the user who has logged in.')
-        ];
-
-        $form['single_sign_on_settings_redirection']['redirect_register_path'] = [
-            '#type' => 'select',
-            '#default_value' => (empty($settings['redirect_register_path']) ? 'home' : $settings['redirect_register_path']),
-            '#title' => $this->t('When new users signup with Social Login ...'),
-            '#options' => [
-                'home' => $this->t('... redirect them to the homepage (Default)'),
-                'same' => $this->t('... redirect them back to the same page'),
-                'custom' => $this->t('... redirect them to the url below:')
-            ]
-        ];
-
-        $form['single_sign_on_settings_redirection']['redirect_register_custom_uri'] = [
-            '#type' => 'textfield',
-            '#default_value' => (!isset($settings['redirect_register_custom_uri']) ? '' : $settings['redirect_register_custom_uri']),
-            '#size' => 100,
-            '#maxlength' => 100,
-            '#description' => $this->t('You can use the placeholder {userid} in the URL. It is automatically replaced by the id of the user who has logged in.')
-        ];
-
-        // Enable the social networks/identity providers.
-        $form['single_sign_on_providers'] = [
-            '#type' => 'fieldset',
-            '#title' => $this->t('Enable the social networks/identity providers of your choice')
-        ];
-
-        // Include the list of providers.
-        $single_sign_on_available_providers = \single_sign_on_get_available_providers();
-
-        // Add providers.
-        foreach ($single_sign_on_available_providers as $key => $provider_data)
-        {
-            $form['single_sign_on_providers']['single_sign_on_icon_' . $key] = [
-                '#title' => Html::escape($provider_data['name']),
-                '#type' => 'container',
-                '#attributes' => [
-                    'class' => [
-                        'single_sign_on_provider',
-                        'single_sign_on_provider_' . $key
-                    ],
-                    'style' => [
-                        'float: left;',
-                        'margin: 5px;'
-                    ]
-                ]
-            ];
-
-            $form['single_sign_on_providers']['provider_' . $key] = [
-                '#type' => 'checkbox',
-                '#title' => Html::escape($provider_data['name']),
-                '#default_value' => (empty($settings['provider_' . $key]) ? 0 : 1),
-                '#attributes' => [
-                    'style' => [
-                        'margin: 15px;'
-                    ]
-                ]
-            ];
-
-            $form['single_sign_on_providers']['clear_' . $key] = [
-                '#type' => 'container',
-                '#attributes' => [
-                    'style' => [
-                        'clear: both;'
-                    ]
-                ]
-            ];
-        }
 
         $form['actions']['#type'] = 'actions';
         $form['actions']['submit'] = [
@@ -468,6 +311,15 @@ class SingleSignOnAdminSettings extends ConfigFormBase
             }
         }
 
+        if ($settings['logout_wait_relogin'] == '')
+        {
+            $settings['logout_wait_relogin'] = '';
+        }
+        else
+        {
+            $settings['logout_wait_relogin'] = $settings['logout_wait_relogin'];
+        }
+
         // Save values.
         foreach ($settings as $setting => $value)
         {
@@ -475,16 +327,16 @@ class SingleSignOnAdminSettings extends ConfigFormBase
             $value = trim($value);
 
             // Check if settings already exists.
-            $oaslsid = db_select('oneall_single_sign_on_settings', 'o')->fields('o', ['oaslsid'])->condition('setting', $setting, '=')->execute()->fetchField();
+            $oaslsid = db_select('oasl_settings', 'o')->fields('o', ['oaslsid'])->condition('setting', $setting, '=')->execute()->fetchField();
             if (is_numeric($oaslsid))
             {
                 // Update setting.
-                db_update('oneall_single_sign_on_settings')->fields(['value' => $value])->condition('oaslsid', $oaslsid, '=')->execute();
+                db_update('oasl_settings')->fields(['value' => $value])->condition('oaslsid', $oaslsid, '=')->execute();
             }
             else
             {
                 // Add setting.
-                db_insert('oneall_single_sign_on_settings')->fields(['setting' => $setting, 'value' => $value])->execute();
+                db_insert('oasl_settings')->fields(['setting' => $setting, 'value' => $value])->execute();
             }
         }
         drupal_set_message(t('Settings saved successfully'), 'status single_sign_on');
@@ -601,14 +453,12 @@ function ajax_check_api_connection_settings($form, FormStateInterface $form_stat
             ];
 
             // Send request.
-            $result = \single_sign_on_do_api_request($handler, $api_domain, $api_options);
-            if (!is_array($result))
+            $result = \single_sign_on_do_api_request($api_domain, 'GET', $api_options);
+
+            // Check result.
+            if (is_object($result) && property_exists($result, 'http_code') && property_exists($result, 'http_data'))
             {
-                $error_message = t('Could not contact API. Your firewall probably blocks outoing requests on both ports (443 and 80)');
-            }
-            else
-            {
-                switch ($result['http_code'])
+                switch ($result->http_code)
                 {
                     case '401':
                         $error_message = t('The API credentials are wrong!');
@@ -623,13 +473,17 @@ function ajax_check_api_connection_settings($form, FormStateInterface $form_stat
                         break;
 
                     case 'n/a':
-                        $error_message = is_null($result['http_data']) ? t('Unknown API Error') : htmlspecialchars($result['http_data']);
+                        $error_message = is_null($result->http_data) ? t('Unknown API Error') : htmlspecialchars($result->http_data);
                         break;
 
                     default:
                         $error_message = t('Unknown API Error');
                         break;
                 }
+            }
+            else
+            {
+                $error_message = t('Could not contact API. Your firewall probably blocks outoing requests on both ports (443 and 80)');
             }
         }
     }

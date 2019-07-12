@@ -3,5 +3,8 @@ configuration:
   css:
     theme:
       css/single_sign_on.admin.css: {}
-
-    
+      css/single_sign_on.site.css: {}
+  js:
+    js/single_sign_on.js: {}
+  dependencies:
+      - core/jquery

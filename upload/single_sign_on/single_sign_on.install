@@ -36,14 +36,14 @@ function single_sign_on_schema() {
       ],
       'date_added' => [
         'description' => 'Adding date',
-        'type' => 'datetime',
-        'length' => '64',
+        'type' => 'int',
+        'length' => '11',
         'not null' => TRUE,
       ],
     ],
     'indexes' => [
       'user_id' => [
-        'customer_id',
+        'user_id',
       ],
       'user_token' => [
         'user_token',
@@ -53,13 +53,13 @@ function single_sign_on_schema() {
       'user_id' => [
         'table' => 'users',
         'columns' => [
-          'uid' => 'uid',
+          'uid' => 'uid'
         ],
       ],
     ],
     'primary key' => [
-      'oasl_user_id',
-    ],
+      'oasl_user_id'
+    ]
   ];
 
   // Identity Token Storage.
@@ -95,6 +95,18 @@ function single_sign_on_schema() {
         'not null' => TRUE,
         'default' => ''
       ],
+      'sso_session_token' => [
+        'description' => 'SSO Token',
+        'type' => 'char',
+        'length' => 36,
+        'not null' => FALSE
+      ],
+      'sso_session_token_expiration' => [
+        'description' => 'SSO Token Expiration',
+        'type' => 'int',
+        'length' => '11',
+        'not null' => FALSE
+      ],
       'num_logins' => [
         'description' => 'Number of logins',
         'type' => 'int',
@@ -103,21 +115,23 @@ function single_sign_on_schema() {
         'default' => 0
       ],
       'date_added' => [
-        'type' => 'datetime',
+        'type' => 'int',
+        'length' => '11',
         'not null' => TRUE
       ],
       'date_updated' => [
-        'type' => 'datetime',
+        'type' => 'int',
+        'length' => '11',
         'not null' => TRUE
       ],
     ],
     'indexes' => [
       'oasl_identity_id' => [
-        'oasl_identity_id',
+        'oasl_identity_id'
       ]
     ],
     'primary key' => [
-      'oasl_identity_id',
+      'oasl_identity_id'
     ],
     'unique key' => [
       'identity_link' => [
@@ -125,9 +139,42 @@ function single_sign_on_schema() {
         'identity_token'
       ],
       'identity_token'
-    ],
+    ]
   ];
 
+
+
+  // Used to store module settings.
+  $schema['oasl_settings'] = [
+    'description' => 'Used to store module settings.',
+    'fields' => [
+      'oaslsid' => [
+        'description' => 'The primary key of this table.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'setting' => [
+        'description' => 'The name of the setting.',
+        'type' => 'varchar',
+        'length' => '64',
+        'not null' => TRUE,
+      ],
+      'value' => [
+        'description' => 'The value of the setting.',
+        'type' => 'text',
+        'not null' => TRUE,
+      ],
+    ],
+    'indexes' => [
+      'setting' => [
+        'setting',
+      ],
+    ],
+    'primary key' => [
+      'oaslsid',
+    ],
+  ];
 
   return $schema;
 }
