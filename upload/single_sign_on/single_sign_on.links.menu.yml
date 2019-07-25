@@ -1,5 +1,5 @@
 single_sign_on.admin_settings:
   route_name: single_sign_on.admin_settings
   title: 'OneAll Single Sign-On'
-  description: 'Configure Single Sign-On and '
+  description: 'Configure Single Sign-On and toggle the debug logging.'
   parent: user.admin_index
