@@ -43,8 +43,8 @@ https://www.drupal.org/project/single_sign_on
 
 
 ## About Us
-Single Sign-On is maintained by [OneAll](http://www.oneall.com/). OneAll, a technology company offering a set of 
-web-delivered tools and services for establishing and optimizing a site's connection with social networks.
+Single Sign-On is maintained by [OneAll](https://www.oneall.com), a technology company offering
+user storage as as service and web-delivered tools to simplify the integration of social networks into websites and mobile apps.
 
 
 ## License
