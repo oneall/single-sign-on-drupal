@@ -1,84 +1,59 @@
-Module:  OneAll Social Login
-Authors: Claude Schlesser <cschlesser@oneall.com>
+Module:  OneAll Single Sign-On
+Authors: Damien Zara <dzara@oneall.com>
 
 Description
 ===========
 
-Professionally developed and free Drupal module that allows your users to 
-register and login to your Drupal website with their existing social network 
-account (Twitter, Facebook, LinkedIn, Google ...)
+Single Sign-On (SSO) automatically creates accounts and signs users in as they 
+browse between multiple and independent Drupal websites in your ecosystem. 
+Take away the need for yours users to create new accounts or re-enter their 
+authentication credentials when they switch from one of your websites to another.
 
-Your existing users can furthermore link their regular account to one or more 
-social networks or identity providers and can then use these social network 
-accounts to login without having to remember another username/password 
-combination.
+== Features
 
-SocialLogin helps increasing your user registration rate by simplifying the 
-registration process and provides permission-based social data retrieved from 
-the social network profiles.
+  *  Reduces user abandonment rates,
+  *  Seamless transition for users from one website to another,
+  *  Installed in just a few minutes,
+  *  State-of-the-art security environment,
+  *  100% compliant with all US & EU data protection laws,
+  *  Works across different and independant domains, websites and databases,
+  *  Integrates with our turnkey plugins for WordPress, OpenCart and Magento too,
+  *  Integrates with any website using our SSO API,
+  *  Top-notch support and integration help.
 
-SocialLogin integrates with your existing registration system so you and your 
-users don't have to start from scratch.
 
-Social Login is maintained by OneAll, a technology company offering a set of 
-web-delivered tools and services for establishing and optimizing a site's 
-connection with social networks.
+== State-of-the-art security
 
-Social network APIs are constantly changing and being updated. OneAll monitors 
-these changes and automatically updates APIs, so you can be sure Social Login 
-will always run smoothly and with the most up-to-date API calls.
+Single Sign-On is powered by the OneAll User Integration platform, a state-of-the-art 
+security environment that is used by more than 300,000 websites worldwide - including 
+small websites, growing startups and large corporate enterprises.
+
+
+== Data Protection Guarantee
+
+Single Sign-On is fully compliant with all European and U.S. data protection laws. As 
+required by the General Data Protection Regulation (GDPR) the OneAll Terms of Service 
+include a Data Processing Agreement that we can countersign on request.
+
+
+== Seamless integration
+
+Single Sign-On seamlessly integrates with your existing login/registration system so that 
+your users don't have to start from scratch. The extension is deployed in minutes and 
+there is no hardware or software installation required.
+
+== More
 
 Visit us at:
 http://www.oneall.com
 
-The Social Login documentation is available at:
-http://docs.oneall.com/plugins/guide/
+The Single Sign-On documentation is available at:
+http://docs.oneall.com/plugins/guide/single-sign-on-drupal/8/
 
 We are devoted to creating a positive experience for our customers and always 
 try to go above and beyond your expectations. Do not hesitate to contact us for 
-questions about the Social Login Module, to give us your feedback or if you need 
+questions about the Single Sign-On extension, to give us your feedback or if you need 
 any help with the integration of the extension in your Drupal Website.
 
 Our team answers your questions at:
 http://www.oneall.com/company/contact-us/
-
-Supported Social Networks
-===========
-
-OneAll Social Login for Drupal currently supports the following social 
-networks and identity providers:
-
-- Amazon
-- Battle.net
-- Blogger
-- Disqus
-- Draugiem
-- Dribbble
-- Facebook
-- Foursquare
-- Github.com
-- Google
-- Instagram
-- Line
-- LinkedIn
-- LiveJournal
-- Mail.ru
-- Meetup
-- Odnoklassniki
-- OpenID
-- PayPal
-- Pinterest
-- PixelPin
-- Reddit
-- Skyrock.com		
-- SoundCloud
-- StackExchange
-- Steam
-- Twitch.tv
-- Twitter
-- Vimeo
-- VKontakte
-- Windows Live
-- WordPress.com
-- Yahoo
-- YouTube
