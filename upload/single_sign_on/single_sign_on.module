@@ -16,7 +16,7 @@ define ('SINGLE_SIGN_ON_LOGIN_WAIT_COOKIE_KEY', 'oa_sso_lw');
 define ('SINGLE_SIGN_ON_LOGOUT_WAIT_RELOGIN_DEFAULT', 60*60);
 define ('SINGLE_SIGN_ON_COOKIE_DOMAIN', false);
 define ('SINGLE_SIGN_ON_COOKIEPATH', '/');
-define ('SINGLE_SIGN_ON_VERSION', '1.1.0');
+define ('SINGLE_SIGN_ON_VERSION', '1.3');
 define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.com');
 
 /**
