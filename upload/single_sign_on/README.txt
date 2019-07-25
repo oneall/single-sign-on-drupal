@@ -22,7 +22,7 @@ authentication credentials when they switch from one of your websites to another
   *  Top-notch support and integration help.
 
 
-== State-of-the-art security
+== State-of-the-art Security
 
 Single Sign-On is powered by the OneAll User Integration platform, a state-of-the-art 
 security environment that is used by more than 300,000 websites worldwide - including 
@@ -36,19 +36,23 @@ required by the General Data Protection Regulation (GDPR) the OneAll Terms of Se
 include a Data Processing Agreement that we can countersign on request.
 
 
-== Seamless integration
+== Seamless Integration
 
 Single Sign-On seamlessly integrates with your existing login/registration system so that 
 your users don't have to start from scratch. The extension is deployed in minutes and 
 there is no hardware or software installation required.
 
-== More
+
+== More Information
 
 Visit us at:
 http://www.oneall.com
 
 The Single Sign-On documentation is available at:
 http://docs.oneall.com/plugins/guide/single-sign-on-drupal/8/
+
+
+== Support & Help
 
 We are devoted to creating a positive experience for our customers and always 
 try to go above and beyond your expectations. Do not hesitate to contact us for 
