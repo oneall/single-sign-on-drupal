@@ -16,20 +16,28 @@ Single Sign-On (SSO) automatically creates accounts and signs users in as they b
 
 
 ## State-of-the-art security
-
-Single Sign-On is powered by the OneAll User Integration platform, a state-of-the-art security environment that is used by more than 300,000 websites worldwide - including small websites, growing startups and large corporate enterprises.
+Single Sign-On is powered by the OneAll User Integration platform, a state-of-the-art security environment that is used by more than 
+300,000 websites worldwide - including small websites, growing startups and large corporate enterprises.
 
 
 ## Data Protection Guarantee
+Single Sign-On is fully compliant with all European and U.S. data protection laws. As required by the General Data Protection 
+Regulation (GDPR) the OneAll Terms of Service include a Data Processing Agreement that we can countersign on request.
 
-Single Sign-On is fully compliant with all European and U.S. data protection laws. As required by the General Data Protection Regulation (GDPR) the OneAll Terms of Service include a Data Processing Agreement that we can countersign on request.
 
+## Seamless integration
+Single Sign-On seamlessly integrates with your existing login/registration system so that your users don't have to start from scratch.  
+The extension is deployed in minutes and there is no hardware or software installation required.
 
-## Installation guide
+The extension is fully compatible with our other SSO plugins like per example for [Magento](http://docs.oneall.com/plugins/guide/single-sign-on-magento/), 
+[OpenCart](https://www.opencart.com/index.php?route=marketplace/extension/info&extension_id=32346) or [WordPress](https://wordpress.org/plugins/single-sign-on-sso/).  
+Easily create a single sign-on network between multiple platforms.
+
+## Installation Guide
 https://docs.oneall.com/plugins/guide/single-sign-on-drupal/8/
 
 
-## Official drupal plugin
+## Official Drupal Extension
 https://www.drupal.org/project/single_sign_on
 
 
