@@ -6,66 +6,60 @@ use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 /**
- * Contains the callback handler used by the OneAll Social Login Module.
+ * Contains the callback handler used by the OneAll Single Sign-On extension.
  */
 class SingleSignOnController extends ControllerBase
 {
-    // Get User notice
+    // Get user notice.
     public function get_user_notice()
     {
         return single_sign_display_user_notice();
     }
 
+    // Read user token (Ajax, see single_sign_on.js)
     public function get_user_sso_token()
     {
-        // SSO Session Token.
-        $sso_session_token = null;
-
-        // Current user
-        $user = \Drupal\user\Entity\User::load(\Drupal::currentUser()->id());
-
-        // Either logged out, or logged in and having a token
-        if (is_object($user) && $user->isAuthenticated())
+        // The user is currently logged in.
+        if (\Drupal::currentUser()->isAuthenticated())
         {
-            $uid = $user->id();
-            $token = single_sign_on_get_user_token_information_for_uid($uid);
+            // Read the user's token.
+            $token = single_sign_on_get_user_token_information_for_uid(\Drupal::currentUser()->id());
 
-            // SSO session token found
-            if ($token->sso_session_token)
+            // We have a session token, refresh it.
+            if (!empty($token->sso_session_token))
             {
-                $sso_session_token = $token->sso_session_token;
+                // Add log.
+                single_sign_on_dump('[SSO JS] [UID' . \Drupal::currentUser()->id() . '] Open session found, registering token [' . $token->sso_session_token . ']');
+
+                // Return token.
+                return $token->sso_session_token;
+            }
+        }
+        // The user is currently not logged in.
+        else
+        {
+             // If this value is in the future, we should not try to login the user with SSO.
+             $login_wait = single_sign_on_get_login_wait_value_from_cookie();
+
+             // Try to login the user.
+             if ($login_wait < time())
+             {
+                // Add log.
+                single_sign_on_dump('[SSO JS] No open session found, checking...');
+
+                // Return status.
+                return 'check_session';
             }
         }
 
-        // Either logged out, or logged in and having a token
-        if (!$user_is_logged_in || ($user_is_logged_in && !empty($sso_session_token)))
-        {
-            // Register session
-            if (!empty($sso_session_token))
-            {
-                single_sign_on_dump('[SSO JS] [UID' . $user->ID . '] Open session found, registering token [' . $sso_session_token . ']');
-
-                return $sso_session_token;
-            }
-            // Check for session
-            else
-            {
-                // If this value is in the future, we should not try to login the user with SSO.
-                $login_wait = single_sign_on_get_login_wait_value_from_cookie();
-
-                if ($login_wait < time())
-                {
-                    single_sign_on_dump('[SSO JS] No open session found, checking...');
-
-                    return 'check_session';
-                }
-            }
-        }
-
-        return null;
+        // No action.
+        return 'no_token_found';
     }
 
-    public function call_ajax($controller, $function)
+    /**
+     * Ajax call to retrieve the session token (referenced by routing.yml).
+     */
+    public function embed_single_sign_on_js($controller, $function)
     {
         $args = func_get_args();
         $r = array();
@@ -84,7 +78,8 @@ class SingleSignOnController extends ControllerBase
 
         if (method_exists($obj, $function))
         {
-            $r['val'] = render($obj->$function());
+            $data = $obj->$function();
+            $r['val'] = render($data);
         }
 
         return new JsonResponse($r);
@@ -93,12 +88,12 @@ class SingleSignOnController extends ControllerBase
     /**
      * This is the callback handler (referenced by routing.yml).
      */
-    public function callbackHandler()
+    public function process_callback()
     {
-        // Read Settings.
+        // Read settings.
         $settings = single_sign_on_get_settings();
 
-        // Result Container.
+        // Result container.
         $status = new \stdClass();
         $status->action = 'error';
 
@@ -107,10 +102,10 @@ class SingleSignOnController extends ControllerBase
         {
             $connection_token = $_POST['connection_token'];
 
-            // Add Log
+            // Add log.
             single_sign_on_dump('[SSO Callback] Callback for connection_token [' . $connection_token . '] detected');
 
-            // We cannot make a connection without a subdomain
+            // We cannot make a connection without a subdomain.
             if (!empty($settings['api_subdomain']))
             {
                 // See: http://docs.oneall.com/api/resources/connections/read-connection-details/
@@ -200,7 +195,7 @@ class SingleSignOnController extends ControllerBase
                                 single_sign_on_dump('[CALLBACK] [U' . $uid . '] User found for email [' . $email . ']');
 
                                 // Automatic link is disabled.
-                                if ($settings['automatic_account_link'] == 'nobody')
+                                if (empty ($settings['auto_link_accounts']))
                                 {
                                     // Add log.
                                     single_sign_on_dump('[CALLBACK] [U' . $uid . '] Autolink is disabled for everybody.');
@@ -215,8 +210,8 @@ class SingleSignOnController extends ControllerBase
                                 // Automatic link is enabled.
                                 else
                                 {
-                                    // Automatic link is disabled for admins.
-                                    if ($settings['accounts_autolink'] == 'everybody_except_admin' && $user->hasRole('administrator'))
+                                    // Automatic link is enabled, but not available for admins.
+                                    if ($settings['auto_link_accounts'] == 2 && $user->hasRole('administrator'))
                                     {
                                         // Add log.
                                         single_sign_on_dump('[CALLBACK] [U' . $uid . '] User is admin and autolink is disabled for admins');
@@ -224,6 +219,7 @@ class SingleSignOnController extends ControllerBase
                                         // Update status.
                                         $status->action = 'existing_user_no_login_autolink_not_allowed';
 
+                                        // Done.
                                         return $status;
                                     }
 
@@ -245,7 +241,7 @@ class SingleSignOnController extends ControllerBase
                                     else
                                     {
                                         // We can use unverified emails.
-                                        if ($settings['accounts_linkunverified'] == 'enabled')
+                                        if (! empty ($settings['link_unverified_accounts']))
                                         {
                                             // Add Log.
                                             single_sign_on_dump('[CALLBACK] [U' . $uid . '] Autolink enabled/Email unverified. Linking user_token [' . $user_token . '] to user');
@@ -295,7 +291,7 @@ class SingleSignOnController extends ControllerBase
                         // /////////////////////////////////////////////////////////////////////////
 
                         // We cannot create new accounts
-                        if ($settings['automatic_account_creation'] == 'disabled')
+                        if ( ! empty ($settings['auto_create_accounts']))
                         {
                             // Add Log
                             single_sign_on_dump('[SSO Callback] New user, but account creation disabled. Cannot create user for user_token [' . $user_token . ']');
@@ -355,16 +351,6 @@ class SingleSignOnController extends ControllerBase
                             }
                         }
 
-                        // Real user accounts get the authenticated user role.
-                        $user_roles = [];
-
-                        // Make sure at least one module implements our hook.
-                        if (count(\Drupal::moduleHandler()->getImplementations('social_login_default_user_roles')) > 0)
-                        {
-                            // Call modules that implement the hook.
-                            $user_roles = \Drupal::moduleHandler()->invokeAll('social_login_default_user_roles', $user_roles);
-                        }
-
                         // Forge password.
                         $user_password = user_password(8);
 
@@ -373,7 +359,7 @@ class SingleSignOnController extends ControllerBase
                             'mail' => $email,
                             'pass' => $user_password,
                             'init' => $email,
-                            'roles' => $user_roles
+                            'roles' => array ()
                         ];
 
                         // Create a new user.

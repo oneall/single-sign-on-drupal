@@ -1,41 +1,42 @@
 jQuery(document).ready(function($){
     
-    // register session
+    // Register Session.
     $.ajax({
-        url: "/ajax/SingleSignOn/get_user_sso_token", 
+        url: '/ajax/SingleSignOn/get_user_sso_token', 
         method :'GET',
-        dataType: "json", 
-        success: function(result){
-
-        	sso_session_token = result.val;
-
-        	if (sso_session_token != undefined){
-
-                // Check for session
-                if (sso_session_token == 'check_session'){
+        dataType: 'json', 
+        success: function(result)
+        {
+           	if (result.hasOwnProperty('val') && typeof result['val'] === 'string' && result['val'].length)
+           	{
+                // Check for existing session.
+                if (result.val == 'check_session')
+                {
                     _oneall.push(['single_sign_on', 'do_check_for_sso_session', window.location.href, true]);                
-
-                //register SSO
-                } else {
-                    _oneall.push(['single_sign_on', 'do_register_sso_session', sso_session_token]);
+                } 
+                // Refresh current session.
+                else
+                {
+                    if (result.val != 'no_token_found')
+                    {
+                        _oneall.push(['single_sign_on', 'do_register_sso_session', result.val]);
+                    }
                 }
         	}
         }
     });
     
-    // Get Notices
+    // Retrieve User Notices.
     $.ajax({
-        url: "/ajax/SingleSignOn/get_user_notice", 
+        url: '/ajax/SingleSignOn/get_user_notice', 
         method :'GET',
-        dataType: "json", 
-        success: function(result){
-            notice = result.val;
-            $('#single_sign_on_notice_container').html(notice);
+        dataType: '"json', 
+        success: function(result)
+        {
+            if (result.hasOwnProperty('val') && typeof result['val'] === 'string' && result['val'].length)
+            {
+                $('#single_sign_on_notice_container').html(result.val);
+            }
         }
     });
 });
-
-// cancel modal
-function reload_page(){
-   location.reload();
-}

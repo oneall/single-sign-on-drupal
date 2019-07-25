@@ -38,7 +38,7 @@ class SingleSignOnAdminSettings extends ConfigFormBase
         ];
 
         // Read Settings.
-        $settings = \single_sign_on_get_settings();
+        $settings = single_sign_on_get_settings();
 
         // API Connection.
         $form['single_sign_on_api_connection'] = [
@@ -124,7 +124,7 @@ class SingleSignOnAdminSettings extends ConfigFormBase
         {
             $form['single_sign_on_api_settings'] = [
                 '#type' => 'fieldset',
-                '#title' => $this->t('API Settings'),
+                '#title' => $this->t('API Connection'),
                 '#id' => 'single_sign_on_api_settings',
                 '#description' => $this->t('<br /><a href="@setup_single_sign_on" target="_blank"><strong>Access API credentials</strong></a>', [
                     '@setup_single_sign_on' => 'https://app.oneall.com/applications/'
@@ -136,9 +136,9 @@ class SingleSignOnAdminSettings extends ConfigFormBase
         {
             $form['single_sign_on_api_settings'] = [
                 '#type' => 'fieldset',
-                '#title' => $this->t('API Settings'),
+                '#title' => $this->t('API Connection'),
                 '#id' => 'single_sign_on_api_settings',
-                '#description' => $this->t('<br /><a href="@setup_single_sign_on" target="_blank" class="button button--primary"><strong>Create a free account and generate my API credentials</strong></a>', [
+                '#description' => $this->t('<br /><a href="@setup_single_sign_on" target="_blank" class="button button--primary"><strong>Create an account and generate my API credentials</strong></a>', [
                     '@setup_single_sign_on' => 'https://app.oneall.com/signup/dp'
                 ])
             ];
@@ -188,62 +188,79 @@ class SingleSignOnAdminSettings extends ConfigFormBase
             ]
         ];
 
-        // Login page settings.
-        $form['single_sign_on_settings_login_page'] = [
+        // General settings.
+        $form['single_sign_on_settings_general'] = [
             '#type' => 'fieldset',
             '#title' => $this->t('Single Sign-On Settings')
         ];
 
-        $form['single_sign_on_settings_login_page']['automatic_account_creation'] = [
+        $form['single_sign_on_settings_general']['auto_create_accounts'] = [
             '#type' => 'select',
             '#title' => $this->t('Automatic Account Creation'),
-            '#description' => $this->t('If enabled, the plugin automatically creates new user accounts for SSO users that visit the blog but do not have an account yet. These users are then automatically logged in with the new account.'),
+            '#description' => $this->t('If enabled, the plugin automatically creates new user accounts for SSO users that visit the website but do not have an account yet. These users are then automatically logged in with the new account.'),
             '#options' => [
-                'enabled' => $this->t('Enable automatic account creation (Default)'),
-                'disabled' => $this->t('Disable automatic account creation')
+                '1' => $this->t('Enable automatic account creation (Default)'),
+                '0' => $this->t('Disable automatic account creation')
             ],
-            '#default_value' => (empty($settings['automatic_account_creation']) ? 'enabled' : $settings['automatic_account_creation'])
+            '#default_value' => ( ! empty($settings['auto_create_accounts']) ? 1 : 0)
         ];
 
-        $form['single_sign_on_settings_login_page']['automatic_account_link'] = [
+        $form['single_sign_on_settings_general']['auto_link_accounts'] = [
             '#type' => 'select',
             '#title' => $this->t('Automatic Account Link'),
-            '#description' => $this->t('If enabled, the plugin tries to link SSO users that visit the blog to already existing user accounts. To link accounts the email address of the SSO user is matched against the email addresses of the existing users.'),
+            '#description' => $this->t('If enabled, the plugin tries to link SSO users that visit the website to already existing user accounts. To link accounts the email address of the SSO user is matched against the email addresses of the existing users.'),
             '#options' => [
-                'nobody' => $this->t('Disable automatic account link'),
-                'everybody' => $this->t('Enable automatic link for all types of accounts'),
-                'everybody_except_admin' => $this->t('Enable automatic link for all types of accounts, except the admin account (Default)')
+                '0' => $this->t('Disable automatic account link'),
+                '1' => $this->t('Enable automatic link for all types of accounts'),
+                '2' => $this->t('Enable automatic link for all types of accounts, except the admin account (Default)')
             ],
-            '#default_value' => (empty($settings['automatic_account_link']) ? 'everybody_except_admin' : $settings['automatic_account_link'])
+            '#default_value' => ( ! empty($settings['auto_link_accounts']) ? $settings['auto_link_accounts'] : 0)
         ];
 
-        $form['single_sign_on_settings_login_page']['account_reminder'] = [
+        $form['single_sign_on_settings_general']['use_account_reminder'] = [
             '#type' => 'select',
             '#title' => $this->t('Account Reminder'),
             '#description' => $this->t('If enabled, the plugin will display a popup reminding the SSO of his account if an existing account has been found, but the user could not be logged in by the plugin (eg. if Automatic Account Link is disabled).'),
             '#options' => [
-                'enabled' => $this->t('Enable account reminder (Default)'),
-                'disabled' => $this->t('Disable account reminder')
+                '1' => $this->t('Enable account reminder (Default)'),
+                '0' => $this->t('Disable account reminder')
             ],
-            '#default_value' => (empty($settings['account_reminder']) ? 'enabled' : $settings['account_reminder'])
+            '#default_value' => ( ! empty($settings['use_account_reminder']) ? 1 : 0)
         ];
 
-        $form['single_sign_on_settings_login_page']['logout_everywhere'] = [
+        $form['single_sign_on_settings_general']['destroy_session_on_logout'] = [
             '#type' => 'select',
             '#title' => $this->t('Destroy Session On Logout'),
-            '#description' => $this->t('If enabled, the plugin destroys the user\'s SSO session whenever he logs out from WordPress. If you disable this setting, then do not use an empty value for the login delay, otherwise the user will be re-logged in instantly.'),
+            '#description' => $this->t('If enabled, the plugin destroys the user\'s SSO session whenever he logs out from Drupal. If you disable this setting, then do not use an empty value for the login delay, otherwise the user will be re-logged in instantly.'),
             '#options' => [
                 '1' => $this->t('Yes. Destroy the SSO session on logout (Default, Recommended)'),
                 '0' => $this->t('No. Keep the SSO session on logout.')
             ],
-            '#default_value' => (int) $settings['logout_everywhere']
+            '#default_value' => ( ! empty ($settings['destroy_session_on_logout']) ? 1 : 0)
         ];
 
-        $form['single_sign_on_settings_login_page']['logout_wait_relogin'] = [
+        $form['single_sign_on_settings_general']['logout_wait_relogin'] = [
             '#type' => 'textfield',
             '#title' => $this->t('Re-Login Delay (Seconds)'),
             '#description' => $this->t('Whenever a user logs out, the plugin will not retry to login that user for the entered period. Please enter a positive integer or leave empty in order to disable.'),
             '#default_value' => $settings['logout_wait_relogin']
+        ];
+
+        // Debuggin settings.
+        $form['single_sign_on_settings_debug'] = [
+            '#type' => 'fieldset',
+            '#title' => $this->t('Single Sign-On Debugging')
+        ];
+
+        $form['single_sign_on_settings_debug']['enable_debug_logs'] = [
+            '#type' => 'select',
+            '#title' => $this->t('Log Single Sign-On actions'),
+            '#description' => $this->t('If enabled, the extension will write a debug log that can be viewed under <a href="/admin/reports/dblog">Manage \ Reports \ Recent log messages</a>.'),
+            '#options' => [
+                '1' => $this->t('Yes, enable logging'),
+                '0' => $this->t('No, disabled logging')
+            ],
+            '#default_value' => ( ! empty($settings['enable_debug_logs']) ? 1 : 0)
         ];
 
         $form['actions']['#type'] = 'actions';
@@ -446,7 +463,7 @@ function ajax_check_api_connection_settings($form, FormStateInterface $form_stat
         else
         {
             // Build API Settings.
-            $api_domain = $protocol . '://' . $api_subdomain . '.api.oneall.com/tools/ping.json';
+            $api_domain = $protocol . '://' . $api_subdomain . '.'.SINGLE_SIGN_ON_API_DOMAIN.'/tools/ping.json';
             $api_options = [
                 'api_key' => $api_key,
                 'api_secret' => $api_secret

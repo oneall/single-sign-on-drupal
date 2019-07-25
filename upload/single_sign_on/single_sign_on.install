@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Containes the database tables required by the OneAll Social Login module.
+ * Containes the database tables required by the OneAll Single Sign-On module.
  */
 
 /**
@@ -12,7 +12,7 @@ function single_sign_on_schema() {
 
   // User Token Storage.
   $schema['oasl_user'] = [
-    'description' => 'Used to link social network profiles to authmap entries.',
+    'description' => 'Used to link single sign-on profiles to authmap entries.',
     'fields' => [
       'oasl_user_id' => [
         'description' => 'The primary key of this table.',
@@ -64,7 +64,7 @@ function single_sign_on_schema() {
 
   // Identity Token Storage.
   $schema['oasl_identity'] = [
-    'description' => 'Used to link social network profiles to authmap entries.',
+    'description' => 'Used to link single sign-on profiles to authmap entries.',
     'fields' => [
       'oasl_identity_id' => [
         'description' => 'The primary key of this table.',        
@@ -82,14 +82,14 @@ function single_sign_on_schema() {
         'not null' => TRUE
       ],
       'identity_token' => [
-        'description' => 'Unique identity_token for a social network profile, returned by the OneAll API.',
+        'description' => 'Unique identity_token for a single sign-on profile, returned by the OneAll API.',
         'type' => 'varchar',
         'length' => 48,
         'not null' => TRUE,
         'default' => ''
       ],
       'identity_provider' => [
-        'description' => 'Social network provider (Facebook, Twitter ...) of this identity.',
+        'description' => 'Social Network Provider (Facebook, Twitter ...) of this identity.',
         'type' => 'varchar',
         'length' => '255',
         'not null' => TRUE,
