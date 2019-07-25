@@ -26,12 +26,13 @@ Regulation (GDPR) the OneAll Terms of Service include a Data Processing Agreemen
 
 
 ## Seamless integration
-Single Sign-On seamlessly integrates with your existing login/registration system so that your users don't have to start from scratch.  
+Single Sign-On seamlessly integrates with your existing login/registration system so that your users don't have to start from scratch.
 The extension is deployed in minutes and there is no hardware or software installation required.
 
 The extension is fully compatible with our other SSO plugins like per example for [Magento](http://docs.oneall.com/plugins/guide/single-sign-on-magento/), 
-[OpenCart](https://www.opencart.com/index.php?route=marketplace/extension/info&extension_id=32346) or [WordPress](https://wordpress.org/plugins/single-sign-on-sso/).  
-Easily create a single sign-on network between multiple platforms.
+[OpenCart](https://www.opencart.com/index.php?route=marketplace/extension/info&extension_id=32346) or [WordPress](https://wordpress.org/plugins/single-sign-on-sso/)
+and can be implemented on any other platform using our [SSO API](https://docs.oneall.com/services/implementation-guide/single-sign-on/).
+
 
 ## Installation Guide
 https://docs.oneall.com/plugins/guide/single-sign-on-drupal/8/
