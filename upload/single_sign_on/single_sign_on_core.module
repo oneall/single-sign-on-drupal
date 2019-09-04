@@ -1,0 +1,1899 @@
+<?php
+
+/**
+ * @file
+ * Contains the core functions used by the OneAll Social Login Module.
+ */
+
+// Constants.
+define ('SINGLE_SIGN_ON_LOGIN_WAIT_COOKIE_KEY', 'oa_sso_lw');
+define ('SINGLE_SIGN_ON_NOTICE_COOKIE_KEY', 'oa_sso_notice');
+define ('SINGLE_SIGN_ON_LOGOUT_WAIT_RELOGIN_DEFAULT', 60*60);
+define ('SINGLE_SIGN_ON_COOKIE_DOMAIN', false);
+define ('SINGLE_SIGN_ON_COOKIEPATH', '/');
+define ('SINGLE_SIGN_ON_VERSION', '1.3');
+define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+
+
+/**
+ * Activate or desactivate logs.
+ */
+function single_sign_on_core_dump($message, $is_error = false)
+{
+    // Read Settings.
+    $settings = single_sign_on_core_get_settings();
+
+    // Is logging enabled?
+    if ( ! empty ($settings['enable_debug_logs']))
+    {
+        // Add error log.
+        if ($is_error)
+        {
+            watchdog('single_sign_on', $message, array(), WATCHDOG_ERROR);
+        }
+        // Add notice log.
+        else
+        {
+            watchdog('single_sign_on', $message);
+        }
+    }
+}
+
+
+/**
+ * Remove the login-wait cookie.
+ */
+function single_sign_on_core_unset_login_wait_cookie()
+{
+    if (isset($_COOKIE) && is_array($_COOKIE) && isset($_COOKIE[SINGLE_SIGN_ON_LOGIN_WAIT_COOKIE_KEY]))
+    {
+        unset($_COOKIE[SINGLE_SIGN_ON_LOGIN_WAIT_COOKIE_KEY]);
+    }
+
+    // Remove Cookie.
+    setcookie(SINGLE_SIGN_ON_LOGIN_WAIT_COOKIE_KEY, '', (time() - (15 * 60)), SINGLE_SIGN_ON_COOKIEPATH, SINGLE_SIGN_ON_COOKIE_DOMAIN);
+}
+
+/**
+ * Get the login-wait value from a cookie.
+ */
+function single_sign_on_core_get_login_wait_value_from_cookie()
+{
+    if (isset($_COOKIE) && is_array($_COOKIE) && isset($_COOKIE[SINGLE_SIGN_ON_LOGIN_WAIT_COOKIE_KEY]))
+    {
+        single_sign_on_core_dump('[SSO JS] Cookie '.$_COOKIE[SINGLE_SIGN_ON_LOGIN_WAIT_COOKIE_KEY]);
+        return $_COOKIE[SINGLE_SIGN_ON_LOGIN_WAIT_COOKIE_KEY];
+    }
+
+    single_sign_on_core_dump('[SSO JS] No Cookies waiting time');
+
+    return 0;
+}
+
+/**
+ * Set the login wait cookie.
+ */
+function single_sign_on_core_set_login_wait_cookie($period)
+{
+    // No automatic logins before this time.
+    $period = ($period + time());
+
+    // Set cookies.
+    setcookie(SINGLE_SIGN_ON_LOGIN_WAIT_COOKIE_KEY, $period, $period, SINGLE_SIGN_ON_COOKIEPATH, SINGLE_SIGN_ON_COOKIE_DOMAIN);
+    $_COOKIE[SINGLE_SIGN_ON_LOGIN_WAIT_COOKIE_KEY] = $period;
+}
+
+/**
+ * Displays a notice if the user is recognized.
+ */
+function single_sign_on_core_display_user_notice()
+{
+    $notice = '';
+
+    // Read settings.
+    $settings = single_sign_on_core_get_settings();
+
+    single_sign_on_core_dump('[SSO JS] Display Notice');
+
+    // Make sure it's enabled.
+    if ( ! empty ($settings['use_account_reminder']))
+    {
+        // Read user from notice.
+        $user = single_sign_on_core_get_user_notice(true);
+
+        // Verify user object.
+        if (is_object($user) && ! empty ($user->uid))
+        {
+            // Mark user notice as displayed.
+            single_sign_on_core_mark_user_notice_displayed($user);
+
+            // Are we using HTTPs?
+            $is_https = single_sign_on_core_is_https_on();
+
+            // Login url.
+            $login_url = single_sign_on_core_get_current_url($is_https, false). '/user/login';
+
+
+            $notice = '<div id="oa_single_sign_on_overlay"></div>
+            <div id="oa_single_sign_on_modal">
+            <div class="oa_single_sign_on_modal_outer">
+            <div class="oa_single_sign_on_modal_inner">
+            <div class="oa_single_sign_on_modal_title">
+            Welcome Back!
+            </div>
+            <div class="oa_single_sign_on_modal_body">
+            <div class="oa_single_sign_on_modal_notice">
+            You already seem to have registered an account with the username <span class="oa_single_sign_on_login">' . $user->name . '</span>. Would you like to login now?
+            </div>
+            <div class="oa_single_sign_on_modal_buttons">
+            <a href="'.$login_url.'" class="oa_single_sign_on_modal_button" id="oa_single_sign_on_modal_button_login">Login</a>
+            <a onclick="window.location.reload();" class="oa_single_sign_on_modal_button" id="oa_single_sign_on_modal_button_cancel">Cancel</a>
+            </div>
+            </div>
+            </div>
+            </div>
+            </div>';
+        }
+    }
+
+    return $notice;
+}
+
+/**
+ * Enables a notice for the user.
+ */
+function single_sign_on_core_enable_user_notice($user, $period = 3600)
+{
+    // Verify user object.
+    if (is_object($user) && ! empty ($user->uid))
+    {
+        // Read notices
+        $old_notices = single_sign_on_core_get_notices();
+        if (!is_array($old_notices))
+        {
+            $old_notices = array();
+        }
+
+        // Removes duplicates
+        $new_notices = array();
+        foreach ($old_notices as $notice)
+        {
+            if (isset($notice['userid']) && $notice['userid'] != $user->uid)
+            {
+                $new_notices[] = $notice;
+            }
+        }
+
+        // Generate a hash.
+        $hash = single_sign_on_core_hash_string($user->uid . time());
+
+        // Add notice.
+        $notices[] = array(
+            'hash' => $hash,
+            'userid' => $user->uid,
+            'displayed' => 0,
+            'expires' => (time() + $period)
+        );
+
+
+        // Save notices.
+        single_sign_on_core_insert_notice($notices);
+
+        // Add cookie.
+        setcookie(SINGLE_SIGN_ON_NOTICE_COOKIE_KEY, $hash, (time() + $period), SINGLE_SIGN_ON_COOKIEPATH, SINGLE_SIGN_ON_COOKIE_DOMAIN);
+        $_COOKIE[SINGLE_SIGN_ON_NOTICE_COOKIE_KEY] = $hash;
+    }
+}
+
+/**
+ * Remove a user a notice.
+ */
+function single_sign_on_core_remove_user_notice($user)
+{
+    // Verify user object.
+    if (is_object($user) && ! empty ($user->uid))
+    {
+        // Current notices.
+        $old_notices = single_sign_on_core_get_notices();
+        if (!is_array($old_notices))
+        {
+            $old_notices = array();
+        }
+
+        // New notices.
+        $new_notices = array();
+        foreach ($old_notices as $notice)
+        {
+            if (isset($notice['userid']) && $notice['userid'] != $user->uid)
+            {
+                $new_notices[] = $notice;
+            }
+        }
+
+        // Save notices.
+        single_sign_on_core_insert_notice($new_notices);
+    }
+}
+
+/**
+ * Removes a notice cookie.
+ */
+function single_sign_on_core_remove_user_notice_cookies()
+{
+    if (isset($_COOKIE) && is_array($_COOKIE) && isset($_COOKIE[SINGLE_SIGN_ON_NOTICE_COOKIE_KEY]))
+    {
+        unset($_COOKIE[SINGLE_SIGN_ON_NOTICE_COOKIE_KEY]);
+    }
+
+    // Remove Cookie.
+    setcookie(SINGLE_SIGN_ON_NOTICE_COOKIE_KEY, '', (time() - (15 * 60)), SINGLE_SIGN_ON_COOKIEPATH, SINGLE_SIGN_ON_COOKIE_DOMAIN);
+}
+
+/**
+ * Removes all notice data for a user.
+ */
+function single_sign_on_core_remove_flush_user_notice($user)
+{
+    single_sign_on_core_remove_user_notice_cookies();
+    single_sign_on_core_remove_user_notice($user);
+}
+
+/**
+ * Marks a notice as having been displayed.
+ */
+function single_sign_on_core_mark_user_notice_displayed($user)
+{
+    // Verify user object.
+    if (is_object($user) && ! empty ($user->uid))
+    {
+        // Current notices.
+        $old_notices = single_sign_on_core_get_notices();
+        if (!is_array($old_notices))
+        {
+            $old_notices = array();
+        }
+
+        // New notices
+        $new_notices = array();
+        foreach ($old_notices as $notice)
+        {
+            if (isset($notice['userid']) && $notice['userid'] == $user->uid)
+            {
+                $notice['displayed'] = 1;
+            }
+
+            // Add
+            $new_notices[] = $notice;
+        }
+
+        // Save notices
+        single_sign_on_core_insert_notice($new_notices);
+    }
+}
+
+/**
+ * Return the current user from the notices.
+ */
+function single_sign_on_core_get_user_notice($only_non_displayed)
+{
+    if (isset($_COOKIE) && is_array($_COOKIE) && isset($_COOKIE[SINGLE_SIGN_ON_NOTICE_COOKIE_KEY]))
+    {
+        // Read notices
+        $notices = single_sign_on_core_get_notices();
+
+        // Check format.
+        if (is_array($notices))
+        {
+            // Read hash
+            $hash = $_COOKIE[SINGLE_SIGN_ON_NOTICE_COOKIE_KEY];
+
+            // Lookup
+            foreach ($notices as $notice)
+            {
+                if (isset($notice['hash']) && $notice['hash'] == $hash)
+                {
+                    $user_notice = $notice;
+                }
+            }
+
+            // Do we have to display a notice?
+            if (isset($user_notice))
+            {
+                // Check if it's valid
+                if (is_array($user_notice) && isset($user_notice['userid']) && isset($user_notice['expires']))
+                {
+                    // Not  expired and not yet displayed
+                    if ($user_notice['expires'] > time())
+                    {
+                        // Return only non-displayed notices?
+                        if (!$only_non_displayed || empty($user_notice['displayed']))
+                        {
+                            // Read user.
+                            $user = user_load($user_notice['userid']);
+
+                            // Verify user object.
+                            if (is_object($user) && ! empty ($user->uid))
+                            {
+                                return $user;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+/*
+ * --------------------------- ----- SSO ----- ----------------------
+ */
+
+/**
+ * Lookup the credentials in the cloud storage.
+ */
+function single_sign_on_core_lookup_user ($login, $password)
+{
+    // Result Container.
+    $status = new stdClass ();
+    $status->is_successfull = false;
+
+    // Lookup the local user.
+    $user = user_load_by_name($login);
+    if ( ! is_object ($user))
+    {
+        $user = user_load_by_mail($login);
+    }
+
+    // User found.
+    if (is_object ($user))
+    {
+        // Lookup using the email address.
+        $result = single_sign_on_core_lookup_user_auth_cloud ($user, $password);
+
+        // Found user for the email/password.
+        if ($result->is_successfull === true)
+        {
+            $status->is_successfull = true;
+            $status->user = $result->user;
+            $status->field = 'email';
+            $status->value = $login;
+        }
+    }
+
+    // Done.
+    return $status;
+}
+
+
+
+/**
+ * Start a new Single Sign-On session for the given identity_token.
+ */
+function single_sign_on_core_start_session_for_identity_token ($identity_token)
+{
+    // Result container.
+    $status = new stdClass ();
+    $status->is_successfull = false;
+
+    // We need the identity_token to create a session.
+    if (!empty ($identity_token))
+    {
+        // Read settings.
+        $settings = single_sign_on_core_get_settings();
+
+        // We cannot make a connection without the subdomain.
+        if (!empty ($settings ['api_subdomain']))
+        {
+            // ////////////////////////////////////////////////////////////////////////////////////////////////
+            // Start a new Single Sign-On Session
+            // ////////////////////////////////////////////////////////////////////////////////////////////////
+
+            // API Endpoint: http://docs.oneall.com/api/resources/sso/identity/start-session/
+            $api_resource_url = get_api_url() . '/sso/sessions/identities/' . $identity_token . '.json';
+
+            // API Options.
+            $api_options = array(
+                'api_key' => $settings ['api_key'],
+                'api_secret' => $settings ['api_secret'],
+                'api_data' => @json_encode (array(
+                    'request' => array(
+                        'sso_session' => array(
+                            'top_realm' => $settings ['session_top_realm'],
+                            'sub_realm' => $settings ['session_sub_realm'],
+                            'lifetime' => $settings ['session_lifetime']
+                        )
+                    )
+                ))
+            );
+
+            // Create Session
+            $result = single_sign_on_core_do_api_request ($api_resource_url, 'PUT', $api_options);
+
+            // Check result. 201 Returned !!!
+            if (is_object ($result) && property_exists ($result, 'http_code') && property_exists ($result, 'http_data'))
+            {
+                // Success.
+                if ($result->http_code == 201)
+                {
+                    // Decode result.
+                    $decoded_result = @json_decode ($result->http_data);
+
+                    // Check result.
+                    if (is_object ($decoded_result) && isset ($decoded_result->response->result->data->sso_session))
+                    {
+                        // Update status.
+                        $status->action = 'session_started';
+                        $status->sso_session_token = $decoded_result->response->result->data->sso_session->sso_session_token;
+                        $status->date_expiration = $decoded_result->response->result->data->sso_session->date_expiration;
+                        $status->is_successfull = true;
+
+                        // Add log.
+                        single_sign_on_core_dump ('[START SESSION] Session [' . $status->sso_session_token . '] for identity [' . $identity_token . '] added to repository');
+                    }
+                    else
+                    {
+                        $status->action = 'invalid_user_object';
+                    }
+                }
+                elseif ($result->http_code == 404)
+                {
+                    $status->action = 'invalid_identity_token';
+                }
+                else
+                {
+                    $status->action = ('http_error_' . $result->http_code);
+                }
+            }
+            else
+            {
+                $status->action = 'http_request_failed';
+            }
+
+        }
+        else
+        {
+            $status->action = 'extension_not_setup';
+        }
+    }
+    else
+    {
+        $status->action = 'empty_identity_token';
+    }
+
+    // Done.
+    return $status;
+}
+
+
+/**
+ * Open a new single sign-on session for the given user.
+ */
+function single_sign_on_core_start_session_for_user ($user, $password)
+{
+    // Result container.
+    $token = new stdClass ();
+    $token->is_successfull = false;
+
+    // User is logged in.
+    if (is_object($user) && !empty($user->uid))
+    {
+        // We have the user, check if he has a token.
+        $token = single_sign_on_core_get_user_token_information_for_uid ($user->uid);
+
+        // User has no token yet.
+        if (empty($token->user_token))
+        {
+            // Add log.
+            single_sign_on_core_dump ('[START SESSION] [UID' . $user->uid . '] User has no token. Creating token.');
+
+            // Add user to cloud storage.
+            $token = single_sign_on_core_synchronize_user_to_cloud_storage ($user, $password);
+
+            // User added.
+            if ($token->is_successfull === true)
+            {
+                // Add log.
+                single_sign_on_core_dump ('[START SESSION] [UID' . $user->uid . '] Tokens created, user_token [' . $token->user_token . '] identity_token [' . $token->identity_token . ']');
+
+                // Add user token to database.
+                $oasl_user_id = single_sign_on_core_link_user_token_to_user_id($user->uid, $token->user_token);
+
+                // Add identity token to database.
+                $oasl_identityid = single_sign_on_core_link_user_to_identity($oasl_user_id, $token->identity_token, $token->provider);
+            }
+        }
+        // User has already token.
+        else
+        {
+          // Add log.
+          single_sign_on_core_dump ('[START SESSION] [UID' . $user->uid . '] User has already tokens, user_token [' . $token->user_token . '] identity_token [' . $token->identity_token . ']');
+        }
+
+        // Start session.
+        if (!empty ($token->identity_token))
+        {
+            // Add log.
+            single_sign_on_core_dump ('[START SESSION] [UID' . $user->uid . '] Starting session');
+
+            // Start a new session.
+            $start_session = single_sign_on_core_start_session_for_identity_token ($token->identity_token);
+
+            // Session started.
+            if ($start_session->is_successfull === true)
+            {
+                // Update status.
+                $token->sso_session_token = $start_session->sso_session_token;
+                $token->date_expiration = $start_session->date_expiration;
+                $token->is_successfull = true;
+
+                $datetime_expiration = new Datetime($token->date_expiration);
+
+                // Add log.
+                single_sign_on_core_dump ('[START SESSION] [UID' . $user->uid . '] Session created, sso_session_token [' . $token->sso_session_token . ']');
+
+                // Store session data.
+                single_sign_on_core_add_sso_session_token_to_identity_token($token->identity_token, $token->sso_session_token, $datetime_expiration->format('U'));
+            }
+            else
+            {
+                // Invalid identity.
+                if ($start_session->action == 'invalid_identity_token')
+                {
+                    // Add log.
+                    single_sign_on_core_dump ('[START SESSION] [UID' . $user->uid . '] Removing invalid token');
+
+                    // Remove tokens.
+                    single_sign_on_core_delete_sso_session_token_to_identity_token($token->identity_token);
+                }
+            }
+
+        }
+    }
+
+    // Created session.
+    return $token;
+}
+
+
+/**
+ * End single sign-on session for the given user
+ */
+function single_sign_on_core_end_session_for_user($user)
+{
+    // Result container.
+    $status = new stdClass ();
+    $status->is_successfull = false;
+
+    // Add log.
+    single_sign_on_core_dump ('[END SESSION] [UID' . $user->uid . '] Removing session token');
+
+    // We have the user, check if he has token.
+    $token = single_sign_on_core_get_user_token_information_for_uid ($user->uid);
+
+    // User has no token yet.
+    if ($token->sso_session_token)
+    {
+        // Remove session data from Drupal.
+        $remove_local_session = single_sign_on_core_delete_sso_session_token_to_oasl_uid ($user->uid);
+
+        // Remove session data from Cloud.
+        $remove_distant_session = single_sign_on_core_remove_session_for_identity_token ($token->identity_token);
+
+        // Removed.
+        if ($remove_distant_session->is_successfull === true)
+        {
+            // Success.
+            $status->is_successfull = true;
+
+            // Add log.
+            single_sign_on_core_dump ('[END SESSION] [UID' . $user->uid . '] Session token removed');
+        }
+    }
+
+    // Done.
+    return $status;
+}
+
+
+/**
+ * Checks if CURL can be used.
+ */
+function single_sign_on_core_check_curl($protocol = 'https')
+{
+  if (in_array('curl', get_loaded_extensions()) && function_exists('curl_exec') && !in_array('curl_exec', single_sign_on_get_disabled_functions()))
+  {
+    $curl = curl_init();
+    curl_setopt($curl, CURLOPT_URL, ((strtolower($protocol) == 'http' ? 'http' : 'https') . '://www.oneall.com/ping.html'));
+    curl_setopt($curl, CURLOPT_HEADER, 0);
+    curl_setopt($curl, CURLOPT_TIMEOUT, 30);
+    curl_setopt($curl, CURLOPT_VERBOSE, 0);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
+    if (($http_data = curl_exec($curl)) !== FALSE)
+    {
+      $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+      curl_close($curl);
+      if ($http_code == 200 && strtolower($http_data) == 'ok')
+      {
+        return TRUE;
+    }
+}
+}
+return FALSE;
+}
+
+/**
+* Checks if fsockopen can be used.
+*/
+function single_sign_on_core_check_fsockopen($protocol = 'https') {
+    if (function_exists('drupal_http_request') && !in_array('drupal_http_request', social_login_get_disabled_functions())) {
+        $result = drupal_http_request((drupal_strtolower($protocol) == 'http' ? 'http' : 'https') . '://www.oneall.com/ping.html');
+        if (is_object($result) && property_exists($result, 'code') && $result->code == 200) {
+            if (property_exists($result, 'data')) {
+                if (drupal_strtolower($result->data) == 'ok') {
+                    return TRUE;
+                }
+            }
+        }
+    }
+    return FALSE;
+}
+
+
+/**
+ * Sends an API request by using the given handler.
+ */
+function single_sign_on_core_do_api_request($url, $method, $options = [], $timeout = 30)
+{
+
+    $handler = single_sign_on_core_get_api_handler();
+    $user_agent_string = 'Single Sign-On/'.SINGLE_SIGN_ON_VERSION.' Drupal/7.x (+http://www.oneall.com/)';
+
+    $http_code = 'n/a';
+    $http_data = NULL;
+
+    // GUZZLE?
+    if (strtolower($handler) == 'fsockopen')
+    {
+        $params = [
+              'headers' => [
+                'User-Agent' => $user_agent_string
+            ],
+            'connect_timeout' => $timeout,
+            'http_errors' => FALSE
+        ];
+
+        // BASIC AUTH?
+        if (is_array($options) && isset($options['api_key']) && isset($options['api_secret']))
+        {
+            $params['auth'] = [
+                $options['api_key'],
+                $options['api_secret']
+            ];
+        }
+
+        $result = drupal_http_request($url, array(
+            'timeout' => $timeout,
+            'headers' => array(
+            'User-Agent' => social_login_get_user_agent()
+        )));
+
+        if (is_object($result)) {
+          // Done.
+          return array(
+            'http_code' => $result->code,
+            'http_data' => $result->data
+          );
+        }
+    }
+    else
+    {
+        // Store the result.
+        $result = new stdClass ();
+
+        // Send request.
+        $curl = curl_init ();
+        curl_setopt ($curl, CURLOPT_URL, $url);
+        curl_setopt ($curl, CURLOPT_HEADER, 0);
+        curl_setopt ($curl, CURLOPT_TIMEOUT, $timeout);
+        curl_setopt ($curl, CURLOPT_VERBOSE, 0);
+        curl_setopt ($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt ($curl, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt ($curl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt ($curl, CURLOPT_USERAGENT, $user_agent_string);
+
+        $data = !empty($options['api_data']) ? $options['api_data'] : null;
+
+        switch ($method){
+            case "POST":
+                curl_setopt($curl, CURLOPT_POST, 1);
+                if ($data)
+                curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+                break;
+
+            case "PUT":
+                curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "PUT");
+                if ($data)
+                curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+                break;
+
+            case "DELETE":
+                curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+                curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+                if ($data)
+                curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+                break;
+
+            default:
+                if ($data)
+                $url = sprintf("%s?%s", $url, http_build_query($data));
+        }
+
+        // BASIC AUTH?
+        if (isset ($options ['api_key']) AND isset ($options ['api_secret']))
+        {
+        curl_setopt ($curl, CURLOPT_USERPWD, $options ['api_key'] . ":" . $options ['api_secret']);
+        }
+
+        // Proxy Settings
+        if ( ! empty ($options ['proxy_url']) && ! empty ($options ['proxy_port']))
+        {
+            // Proxy Location
+            curl_setopt ($curl, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+            curl_setopt ($curl, CURLOPT_PROXY, $options ['proxy_url']);
+
+            // Proxy Port
+            curl_setopt ($curl, CURLOPT_PROXYPORT, $options ['proxy_port']);
+
+            // Proxy Authentication
+            if ( ! empty ($options ['proxy_username']) && ! empty ($options ['proxy_password']))
+            {
+            curl_setopt ($curl, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
+            curl_setopt ($curl, CURLOPT_PROXYUSERPWD, $options ['proxy_username'] . ':' . $options ['proxy_password']);
+            }
+        }
+
+        //Make request
+        if (($http_data = curl_exec ($curl)) !== false)
+        {
+            $result->http_code = curl_getinfo ($curl, CURLINFO_HTTP_CODE);
+            $result->http_data = $http_data;
+            $result->http_error = null;
+        }
+        else
+        {
+            $result->http_code = -1;
+            $result->http_data = null;
+            $result->http_error = curl_error ($curl);
+        }
+
+        //Done
+        return $result;
+    }
+    
+    return NULL;
+}
+
+/**
+ * Return the oasl_user for a user_token.
+ */
+function single_sign_on_core_get_oasl_user_for_user_token($uid)
+{
+    // Read user for token.
+    $query = db_select('oasl_user','u');
+    $query->fields('u')->condition('user_id', $uid, '=');
+    $oasl_user=$query->execute()->fetch();
+    return (empty($oasl_user) ? FALSE : $oasl_user);
+}
+
+/**
+ * Return the oasl_identity for a user_token.
+ */
+function single_sign_on_core_get_oasl_identity_for_user_token($uid)
+{
+
+    $oasl_user = single_sign_on_core_get_oasl_user_for_user_token($uid);
+
+    if($oasl_user)
+    {
+        // oasl_user
+        $query = db_select('oasl_identity','u');
+        $query->fields('u')->condition('oasl_user_id', $oasl_user->oasl_user_id, '=');
+        $oasl_identity=$query->execute()->fetch();
+    }
+
+    return (empty($oasl_identity) ? FALSE : $oasl_identity);
+}
+
+/**
+ * Return the user for a user_token.
+ */
+function single_sign_on_core_get_user_for_user_token($user_token) {
+
+    $uid = single_sign_on_core_get_uid_for_user_token($user_token);
+
+    if ($uid === FALSE) {
+        return FALSE;
+    }
+
+    $user = user_load($uid);
+    return (empty($user) ? FALSE : $user);
+}
+
+/**
+ * Return the oasl_user_id for a user_token.
+ */
+function single_sign_on_core_get_oasl_user_id_for_user_token($user_token) {
+  $oasl_user_id = db_query("SELECT oasl_user_id FROM {oasl_user} WHERE user_token = :token", [':token' => $user_token])->fetchField();
+  return (is_numeric($oasl_user_id) ? $oasl_user_id : FALSE);
+}
+
+/**
+ * Return the user_id for a user_token.
+ */
+function single_sign_on_core_get_uid_for_user_token($user_token) {
+  $user_id = db_query("SELECT user_id FROM {oasl_user} WHERE user_token = :token", [':token' => $user_token])->fetchField();
+  return (is_numeric($user_id) ? $user_id : FALSE);
+}
+
+
+/**
+ * Get the uid for a name.
+ */
+function single_sign_on_core_get_uid_for_name($name) {
+  $users = user_load_by_name($name);
+  return (empty($users) ? FALSE : $users);
+}
+
+/**
+ * Get the user(s) for an email address.
+ */
+function single_sign_on_core_get_uid_for_email($mail) {
+  $users = user_load_by_mail($mail);
+  return (empty($users) ? FALSE : $users);
+}
+
+/**
+ * Return the user_token for a user_id.
+ */
+function single_sign_on_core_get_user_token_information_for_uid($user_id) {
+    $oasl_user = single_sign_on_core_get_oasl_user_for_user_token($user_id);
+    $oasl_identity = single_sign_on_core_get_oasl_identity_for_user_token($user_id);
+
+    $token = new stdClass();
+
+    if ($oasl_user)
+    {
+        $token->oasl_user_id = $oasl_user->oasl_user_id;
+        $token->user_id = $oasl_user->user_id;
+        $token->oasl_identity_id = $oasl_user->user_id;
+        $token->user_token = $oasl_user->user_token;
+    }
+
+    if ($oasl_identity){
+        $token->identity_token = $oasl_identity->identity_token;
+        $token->identity_provider = $oasl_identity->identity_provider;
+        $token->sso_session_token = $oasl_identity->sso_session_token;
+        $token->sso_session_token_expiration = $oasl_identity->sso_session_token_expiration;
+    }
+
+    return $token;
+}
+
+/**
+ * Returns the sso session token of a user from the local database.
+ */
+function single_sign_on_core_get_local_sso_session_token_for_user($user)
+{
+    // Result Container.
+    $status = new stdClass();
+    $status->is_successfull = false;
+
+    // Verify user object.
+    if (is_object($user) && !empty($user->uid))
+    {
+        // Load user's sso_session_token.
+        $sso_session_token = get_user_meta($user->uid, 'single_sign_on_sso_session_token', true);
+        $sso_session_token_expiration = get_user_meta($user->uid, 'single_sign_on_sso_session_token_expiration', true);
+
+        // Token found and not expired.
+        if (!empty($sso_session_token) && (empty($sso_session_token_expiration) || $sso_session_token_expiration >= time()))
+        {
+            // Update Status.
+            $status->sso_session_token = $sso_session_token;
+            $status->date_expiration = $sso_session_token_expiration;
+            $status->is_successfull = true;
+        }
+    }
+
+    return $status;
+}
+
+
+/**
+ * links a user_token to a user_id.
+ */
+function single_sign_on_core_link_user_token_to_user_id($user_id, $user_token) {
+
+    $oasl_user_id = single_sign_on_core_get_oasl_user_id_for_user_token($user_token);
+
+    // non existing -> create it
+    if (!$oasl_user_id){
+
+        // Add identity.
+        return db_insert('oasl_user')->fields([
+          'user_token' => $user_token,
+          'user_id' => $user_id,
+          'date_added' => time()
+      ])->execute();
+
+    }
+
+    return $oasl_user_id;
+}
+
+/**
+ * Return the identity_token for a identity_token.
+ */
+function single_sign_on_core_get_userid_for_identity_token($identity_token) {
+  $oasl_user_id = db_query("SELECT oasl_user_id FROM {oasl_identity} WHERE identity_token = :identity_token", [':identity_token' => $identity_token])->fetchField();
+  return (!empty($oasl_user_id) ? $oasl_user_id : FALSE);
+}
+
+
+/**
+ * links a user_token to a identity_token.
+ */
+function single_sign_on_core_link_user_to_identity($oasl_user_id, $identity_token, $identity_provider='') {
+
+    $existing_token_user_id = single_sign_on_core_get_userid_for_identity_token($identity_token);
+
+    // non existing -> create it
+    if (!$existing_token_user_id){
+
+        // Add identity.
+        return db_insert('oasl_identity')->fields([
+          'oasl_user_id' => $oasl_user_id,
+          'identity_token' => $identity_token,
+          'identity_provider' => $identity_provider,
+          'num_logins' => 1,
+          'date_added' => time(),
+          'date_updated' => time()
+      ])->execute();
+
+    } else {
+
+        // update identity.
+        return db_update('oasl_identity')
+        ->expression('num_logins', 'num_logins + :num_logins', array(':num_logins' => 1))
+        ->expression('date_updated', time())
+        ->condition('oasl_user_id', $existing_token_user_id)
+        ->execute();
+    }
+}
+
+/**
+ * Add the cloud storage tokens of a user to the local database.
+ */
+function single_sign_on_core_add_local_storage_tokens_for_uid($uid, $user_token, $identity_token, $provider = '') {
+
+    // Add user token to database
+    $oasl_user_id = single_sign_on_core_link_user_token_to_user_id($uid, $user_token);
+
+    // Add identity token to database
+    $oasl_identityid = single_sign_on_core_link_user_to_identity($oasl_user_id, $identity_token, $provider);
+}
+
+/**
+ * Add SSO Session to identity_token
+ */
+function single_sign_on_core_add_sso_session_token_to_identity_token($identity_token, $sso_session_token, $date_expiration = null) {
+
+    return db_update('oasl_identity')
+    ->expression('sso_session_token', ':sso_session_token', array(':sso_session_token' => $sso_session_token))
+    ->expression('sso_session_token_expiration', (int) $date_expiration)
+    ->condition('identity_token', $identity_token)
+    ->execute();
+}
+
+/**
+ * Delete SSO Session to identity_token
+ */
+function single_sign_on_core_delete_sso_session_token_to_identity_token($identity_token) {
+    return db_update('oasl_identity')
+    ->expression('sso_session_token', 'NULL')
+    ->expression('sso_session_token_expiration', 'NULL')
+    ->condition('identity_token', $identity_token)
+    ->execute();
+}
+
+/**
+ * Delete SSO Session to uid
+ */
+function single_sign_on_core_delete_sso_session_token_to_oasl_uid($uid) {
+
+    $sql = "UPDATE oasl_identity
+    INNER JOIN oasl_user ON oasl_user.oasl_user_id = oasl_identity.oasl_user_id
+    SET sso_session_token = NULL, sso_session_token_expiration = NULL
+    where user_id = :user_id";
+
+    return db_query($sql, array(':user_id' => $uid));
+}
+
+/**
+ * Add or update a notice
+ */
+function single_sign_on_core_insert_notice(array $notice_data) {
+
+    $notices = single_sign_on_core_get_notices();
+
+    // non existing -> create it
+    if (!$notices){
+
+        // Add notice.
+        return db_insert('oasl_settings')->fields([
+          'setting' => 'notice',
+          'value' => json_encode($notice_data)
+      ])->execute();
+
+    } else {
+
+        // update notice.
+        return db_update('oasl_settings')
+        ->expression('value', ':notice_data' , array(':notice_data' => json_encode($notice_data)))
+        ->condition('setting', 'notice')
+        ->execute();
+    }
+}
+
+
+/**
+ * Get notices
+ */
+function single_sign_on_core_get_notices() {
+
+    // oasl_settings
+    $query = db_select('oasl_settings','oasl_s');
+    $query->fields('oasl_s')->condition('setting', 'notice', '=');
+    $oasl_settings=$query->execute()->fetch();
+
+    return !empty($oasl_settings->value) ? json_decode($oasl_settings->value, true) : [];
+}
+
+
+
+
+
+/*
+ * --------------------------- ----- OTHER ----- ----------------------
+ */
+
+/**
+ * Checks if the current connection is being made over https.
+ */
+function single_sign_on_core_is_https_on () {
+
+    if (isset ($_SERVER) && is_array ($_SERVER)) {
+
+        if (! empty ($_SERVER ['SERVER_PORT'])) {
+            if (trim ($_SERVER ['SERVER_PORT']) == '443') {
+                return true;
+            }
+        }
+
+        if (! empty ($_SERVER ['HTTP_X_FORWARDED_PROTO'])) {
+            if (strtolower (trim ($_SERVER ['HTTP_X_FORWARDED_PROTO'])) == 'https') {
+                return true;
+            }
+        }
+
+        if (! empty ($_SERVER ['HTTPS'])) {
+            if (stristr($_SERVER['HTTPS'], 'off') === false) {
+                return true;
+            }
+        }
+
+    }
+
+    return false;
+}
+
+
+
+function single_sign_on_core_get_api_handler(){
+
+    // Read settings
+    $settings = single_sign_on_core_get_settings ();
+
+    // API Connection Handler.
+    $handler = (!empty($settings['http_handler']) ? $settings['http_handler'] : 'curl');
+    return ($handler == 'fsockopen' ? 'fsockopen' : 'curl');
+}
+
+/**
+ * Check if a given v4 UUID is valid.
+ */
+function single_sign_on_core_is_uuid($uuid)
+{
+    return preg_match('/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i', trim($uuid));
+}
+
+
+/**
+ * Hash a password.
+ */
+function single_sign_on_core_hash_string ($password)
+{
+    // Read settings
+    $settings = single_sign_on_core_get_settings ();
+
+    // We cannot make a connection without the subdomain.
+    if (!empty ($settings ['api_key']) && !empty ($settings ['api_subdomain']))
+    {
+        return sha1 ($settings ['api_key'] . $password . $settings ['api_subdomain']);
+    }
+
+    // Error
+    return null;
+}
+
+/**
+ * Create a random email address.
+ */
+function single_sign_on_core_create_random_email() {
+  do {
+    $email = md5(uniqid(rand(10000, 99999))) . "@example.com";
+}
+while ( single_sign_on_core_get_uid_for_email($email) !== FALSE );
+return $email;
+}
+
+/**
+ * Return the settings.
+ */
+function single_sign_on_core_get_settings() {
+
+    // Container.
+    $settings = [];
+
+    // API settings.
+    $settings['api_subdomain'] = '';
+    $settings['api_key'] = '';
+    $settings['api_secret'] = '';
+    $settings['http_handler'] = 'curl';
+    $settings['http_protocol'] = 'https';
+
+    // Debug logs.
+    $settings['enable_debug_logs'] = 0;
+
+    // Grace period after logout.
+    $settings['logout_wait_relogin'] = 0;
+
+    // Automatic account link for unverified emails.
+    $settings['link_unverified_accounts'] = 0;
+
+    // Automatically create accounts.
+    $settings['auto_create_accounts'] = 1;
+
+    // Automatically link accounts.
+    $settings['auto_link_accounts'] = 2;
+
+    // Account reminder if autolink is not available.
+    $settings['use_account_reminder'] = 1;
+
+    // Destroy the session on logout.
+    $settings['destroy_session_on_logout'] = 1;
+
+    // Disables the login for this period whenever an automatic login fails.
+    $settings['blocked_wait_relogin'] = 3600;
+
+    // Read settings.
+    $results = db_query("SELECT setting, value FROM {oasl_settings}");
+    foreach ($results as $result)
+    {
+        $settings[$result->setting] = $result->value;
+    }
+    return $settings;
+}
+
+
+
+/**
+ * Returns the current url of the page.
+ */
+function single_sign_on_core_get_current_url($https_enabled = FALSE, $full_url = true) {
+
+  // Curent URI.
+  $request_uri = (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : $_SERVER['PHP_SELF']);
+
+  // Pantheon.io (only provides port 80 and 443)
+  // https://www.drupal.org/node/2772621
+  if (isset($_SERVER['PANTHEON_ENVIRONMENT'])) {
+    $redirect_to = $_SERVER['HTTP_X_PROTO'] . $_SERVER['HTTP_HOST'] . $request_uri;
+}
+  // Default.
+else {
+    // Request Host.
+    $request_host = (isset($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : $_SERVER['SERVER_NAME']));
+
+    // Request Protocol.
+    $request_protocol = ($https_enabled ? 'https' : 'http');
+
+    // SERVER_PORT is usually wrong on proxies, don't use it!
+    if (isset($_SERVER['HTTP_X_FORWARDED_PORT'])) {
+      $request_port = intval($_SERVER['HTTP_X_FORWARDED_PORT']);
+  }
+    // Does not seem like a proxy.
+  elseif (isset($_SERVER['SERVER_PORT'])) {
+      $request_port = intval($_SERVER['SERVER_PORT']);
+  }
+    // No port.
+  else {
+      $request_port = '';
+  }
+
+    // Remove standard ports.
+  $request_port = (!in_array($request_port, [80, 443]) ? $request_port : '');
+
+    // Build url.
+  $redirect_to = $request_protocol . '://' . $request_host . (!empty($request_port) ? (':' . $request_port) : '') . ($full_url ? $request_uri : '');
+}
+
+return $redirect_to;
+}
+
+/**
+ * Remove the session data.
+ */
+function single_sign_on_clear_session() {
+  if (is_array ($_SESSION)) {
+      foreach ($_SESSION AS $key => $data) {
+          if (preg_match ('#^single_sign_on#i', $key)) {
+              unset($_SESSION[$key]);
+          }
+      }
+  }
+}
+
+/**
+ * Returns a list of disabled functions.
+ */
+function single_sign_on_get_disabled_functions() {
+  $disabled_functions = trim(ini_get('disable_functions'));
+  if (strlen($disabled_functions) == 0) {
+    $disabled_functions = [];
+}
+else {
+    $disabled_functions = explode(',', $disabled_functions);
+    $disabled_functions = array_map('trim', $disabled_functions);
+}
+return $disabled_functions;
+}
+
+/*
+ * --------------------------- ----- API ----- ----------------------
+ */
+
+// Generate API Url
+function get_api_url(){
+
+    // Read settings.
+    $settings = single_sign_on_core_get_settings ();
+
+    // API connection protocol.
+    $protocol = (!empty($settings['http_protocol']) ? $settings['http_protocol'] : 'https');
+    $protocol = ($protocol == 'http' ? 'http' : 'https');
+
+    // Done.
+    return $protocol . '://' . $settings ['api_subdomain'] . '.'.SINGLE_SIGN_ON_API_DOMAIN;
+}
+
+/**
+ * Add a user to the cloud storage.
+ */
+function single_sign_on_core_synchronize_user_to_cloud_storage ($user, $password)
+{
+    global $user;
+
+    // Result Container
+    $status = new stdClass ();
+    $status->is_successfull = false;
+    $status->identity_token = null;
+    $status->user_token = null;
+
+    // Read settings
+    $settings = single_sign_on_core_get_settings ();
+
+    $user = user_load($user->uid);
+
+    // User is logged in.
+    if (is_object($user) && !empty($user->uid)) 
+    {
+        // We cannot make a connection without the subdomain.
+        if (!empty ($settings ['api_subdomain']))
+        {
+            // Add Log
+            single_sign_on_core_dump ('[SYNCHRONIZE USER] [UID' . $user->uid . '] Synchronize data with cloud storage');
+
+            // ////////////////////////////////////////////////////////////////////////////////////////////////
+            // If we are getting here, then a new identity needs to be added
+            // ////////////////////////////////////////////////////////////////////////////////////////////////
+
+            // Build Data
+            $identity = array (
+              'preferredUsername' => $user->name,
+              'displayName' => $user->name
+          );
+
+            // User Email.
+            if ( ! empty ($user->mail))
+            {
+              $identity['emails'] = array (
+                array (
+                  'value' => $user->mail,
+                  'is_verified' => true
+              )
+            );
+          }
+
+          if (!empty($user->picture)) {
+            $identity['thumbnailUrl'] = file_create_url($user->picture->uri);
+        } else {
+            $identity['thumbnailUrl'] = '';
+        }
+
+        single_sign_on_core_dump ('[SYNCHRONIZE USER] [UID' . $user->uid . '] Pushing user record to cloud storage');
+
+            // API Endpoint: http://docs.oneall.com/api/resources/storage/users/create-user/
+        $api_resource_url = get_api_url() . '/storage/users/user/synchronize.json';
+
+            // API Options.
+        $api_options = array(
+          'api_key' => $settings ['api_key'],
+          'api_secret' => $settings ['api_secret'],
+          'api_data' => @json_encode (array(
+            'request' => array (
+                'synchronize' => array (
+                    'identifier' => array (
+                      'field' => 'login',
+                      'value' => $user->mail
+                  ),
+                    'user' => array (
+                      'login' => $user->mail,
+                      'password' =>  $password,
+                      'identity' => $identity
+                  )
+                )
+            )
+        )
+      )
+      );
+
+            // Add User.
+        $result = single_sign_on_core_do_api_request ($api_resource_url, 'PUT', $api_options);
+
+            // Check result.
+        if (is_object ($result) && property_exists ($result, 'http_code') && ($result->http_code == 201 || $result->http_code == 200) && property_exists ($result, 'http_data'))
+        {
+                // Decode result.
+            $decoded_result = @json_decode ($result->http_data);
+
+                // Check data.
+            if (is_object ($decoded_result) && isset ($decoded_result->response->result->data->user))
+            {
+                    // Update status.
+                $status->action = 'new_user_created';
+                $status->is_successfull = true;
+                $status->user_token = $decoded_result->response->result->data->user->user_token;
+                $status->identity_token = $decoded_result->response->result->data->user->identity->identity_token;
+                $status->provider = $decoded_result->response->result->data->user->identity->provider;
+
+                    // Add Log.
+                single_sign_on_core_dump ('[SYNCHRONIZE USER] [UID' . $user->uid . '] User '.($result->http_code == 201 ? 'created' : 'updated').', user_token [' . $status->user_token . '] and identity_token [' . $status->identity_token . '] assigned');
+
+                    // Done.
+                return $status;
+            }
+        }
+    }
+}
+
+
+    // Error.
+return $status;
+}
+
+
+/**
+ * Remove a Single Sign-On session for the given identity_token.
+ */
+function single_sign_on_core_remove_session_for_identity_token ($identity_token)
+{
+    // Result container.
+    $status = new stdClass ();
+    $status->action = 'session_to_delete';
+    $status->is_successfull = false;
+
+    // We need the sso_session_token to remove the session.
+    if (!empty ($identity_token))
+    {
+        // Read settings.
+        $settings = single_sign_on_core_get_settings ();
+
+        // We cannot make a connection without the subdomain.
+        if (!empty ($settings ['api_subdomain']))
+        {
+            // ////////////////////////////////////////////////////////////////////////////////////////////////
+            // Destroy an existing Single Sign-On Session
+            // ////////////////////////////////////////////////////////////////////////////////////////////////
+
+            // API Endpoint: http://docs.oneall.com/api/resources/sso/delete-session/
+            $api_resource_url = get_api_url() . '/sso/sessions/identities/' . $identity_token . '.json?confirm_deletion=true';
+
+            // API Options
+            $api_options = array(
+                'api_key' => $settings ['api_key'],
+                'api_secret' => $settings ['api_secret']
+            );
+
+            // Delete Session.
+            $result = single_sign_on_core_do_api_request ($api_resource_url, 'DELETE', $api_options);
+
+            // Check result.
+            if (is_object ($result) && property_exists ($result, 'http_code') && $result->http_code == 200)
+            {
+                // Update status.
+                $status->action = 'session_deleted';
+                $status->is_successfull = true;
+
+                // Add log.
+                single_sign_on_core_dump ('[REMOVE SESSION] Sessions for identity_token [' . $identity_token . '] removed from repository');
+            }
+        }
+        // Extension not setup.
+        else
+        {
+            $status->action = 'extension_not_setup';
+        }
+    }
+
+    // Done
+    return $status;
+}
+
+
+// Lookup user credentials in the cloud.
+function single_sign_on_core_lookup_user_auth_cloud ($user, $password)
+{
+    // Result Container.
+    $status = new stdClass ();
+    $status->is_successfull = false;
+
+    // Read settings
+    $settings = single_sign_on_core_get_settings ();
+
+    // We cannot make a connection without a subdomain
+    if (!empty ($settings ['api_subdomain']))
+    {
+        // Add log.
+        single_sign_on_core_dump ('[TRY CLOUD LOGIN] [UID' . $user->uid . '] Verifying password');
+
+        // We have the user, check if he has tokens.
+        $token = single_sign_on_core_get_user_token_information_for_uid ($user->uid);
+
+        // Yes, we have a token
+        if ( ! empty ($token->user_token))
+        {
+            // API Endpoint: http://docs.oneall.com/api/resources/storage/users/lookup-user/
+            $api_resource_url = get_api_url() . '/storage/users/user/lookup.json';
+
+            // API Options.
+            $api_options = array(
+                'api_key' => $settings ['api_key'],
+                'api_secret' => $settings ['api_secret'],
+                'api_data' => @json_encode (array(
+                    'request' => array(
+                        'user' => array(
+                            'user_token' => $token->user_token,
+                            'password' => $password
+                        )
+                    )
+                ))
+            );
+
+            // Read connection details.
+            $result = single_sign_on_core_do_api_request ($api_resource_url, 'POST', $api_options);
+
+            // Check result.
+            if (is_object ($result) && property_exists ($result, 'http_code') && property_exists ($result, 'http_data'))
+            {
+                // Decode result.
+                $decoded_result = @json_decode ($result->http_data);
+
+                // Wrong password entered.
+                if ($result->http_code == 401)
+                {
+                    // Add Log.
+                    single_sign_on_core_dump ('[TRY CLOUD LOGIN] [UID' . $user->uid . '] Login failed, falling back to native authentication');
+                }
+                // Correct password entered.
+                elseif ($result->http_code == 200)
+                {
+                    // Add Log.
+                    single_sign_on_core_dump ('[TRY CLOUD LOGIN] [UID' . $user->uid . '] Login succeeded, user_token [' . $token->user_token . '] assigned');
+
+                    // Update status
+                    $status->is_successfull = true;
+                    $status->user = $user;
+
+                    // Done
+                    return $status;
+                }
+            }
+        }
+        else
+        {
+            // Add log.
+            single_sign_on_core_dump ('[TRY CLOUD LOGIN] [UID' . $user->uid . '] User has no local tokens, falling back to native authentication');
+        }
+
+    }
+    else
+    {
+        $status->action = 'extension_not_setup';
+    }
+
+    // Not found
+    return $status;
+}
+
+/**
+ * This is the callback handler (referenced by routing.yml).
+ */
+function single_sign_on_core_process_callback()
+{
+    global $user;
+
+    // Read settings.
+    $settings = single_sign_on_core_get_settings();
+
+    // Require approval?
+    $registration_approval = (!empty($settings['registration_approval']) ? $settings['registration_approval'] : '');
+    $registration_approval = (in_array($registration_approval, array('inherit', 'disable', 'enable')) ? $registration_approval : 'inherit');
+
+    // Result container.
+    $status = new \stdClass();
+    $status->action = 'error';
+
+    // Callback Handler.
+    if (isset($_POST) && !empty($_POST['oa_action']) && $_POST['oa_action'] == 'single_sign_on' && isset($_POST['connection_token']) && single_sign_on_core_is_uuid($_POST['connection_token']))
+    {
+        $connection_token = $_POST['connection_token'];
+
+        // Add log.
+        single_sign_on_core_dump('[SSO Callback] Callback for connection_token [' . $connection_token . '] detected');
+
+        // We cannot make a connection without a subdomain.
+        if (!empty($settings['api_subdomain']))
+        {
+            // See: http://docs.oneall.com/api/resources/connections/read-connection-details/
+            $api_resource_url = get_api_url() . '/connections/' . $connection_token . '.json';
+
+            // API options.
+            $api_options = array(
+                'api_key' => $settings['api_key'],
+                'api_secret' => $settings['api_secret']
+            );
+
+            // Read connection details.
+            $result = single_sign_on_core_do_api_request($api_resource_url, 'GET', $api_options);
+
+            // Check result.
+            if (is_object($result) && property_exists($result, 'http_code') && $result->http_code == 200 && property_exists($result, 'http_data'))
+            {
+                // Decode result.
+                $decoded_result = @json_decode($result->http_data);
+
+                // Check data.
+                if (is_object($decoded_result) && isset($decoded_result->response->result->data->user))
+                {
+                    // Extract user data.
+                    $data = $decoded_result->response->result->data;
+
+                    // The user_token uniquely identifies the user.
+                    $user_token = $data->user->user_token;
+
+                    // The identity_token uniquely identifies the user's data.
+                    $identity_token = $data->user->identity->identity_token;
+
+                    // provider name
+                    $provider = !empty($data->user->identity->provider) ? $data->user->identity->provider : '';
+
+                    // Add Log.
+                    single_sign_on_core_dump('[CALLBACK] Token user_token [' . $user_token . '] / identity_token [' . $identity_token . '] retrieved for connection_token [' . $connection_token . ']');
+
+                    // Add to status.
+                    $status->user_token = $user_token;
+                    $status->identity_token = $identity_token;
+
+                    // Check if we have a customer for this user_token.
+                    $user = single_sign_on_core_get_user_for_user_token($user_token);
+       
+                    // User found.
+                    if (is_object($user) && !empty($user->uid))
+                    {
+                        $uid = $user->uid;
+
+                        // Add Log.
+                        single_sign_on_core_dump('[CALLBACK] Customer [' . $uid . '] logged in for user_token [' . $user_token . ']');
+
+                        // Update (This is just to make sure that the table is always correct).
+                        single_sign_on_core_add_local_storage_tokens_for_uid($uid, $user_token, $identity_token, $provider);
+
+                        // Update status.
+                        $status->action = 'existing_user_login_user_token';
+                        $status->user = $user;
+
+                        return $status;
+                    }
+
+                    // Add Log.
+                    single_sign_on_core_dump('[CALLBACK] No user found for user_token [' . $user_token . ']. Trying email lookup.');
+
+                    // Retrieve email from identity.
+                    if (isset($data->user->identity->emails) && is_array($data->user->identity->emails) && count($data->user->identity->emails) > 0)
+                    {
+                        // Email details.
+                        $email = $data->user->identity->emails[0]->value;
+                        $email_is_verified = ($data->user->identity->emails[0]->is_verified ? true : false);
+                        $email_is_random = false;
+                        
+                        // Check if we have a user for this email.
+                        $user = user_load_by_mail($email);
+
+                        // User found.
+                        if (is_object($user) && !empty($user->uid))
+                        {
+                            $uid = $user->uid;
+
+                            // Update Status
+                            $status->user = $user;
+
+                            // Add log.
+                            single_sign_on_core_dump('[CALLBACK] [U' . $uid . '] User found for email [' . $email . ']');
+
+                            // Automatic link is disabled.
+                            if (empty($settings['auto_link_accounts']))
+                            {
+                                // Add log.
+                                single_sign_on_core_dump('[CALLBACK] [U' . $uid . '] Autolink is disabled for everybody.');
+
+                                // Update status.
+                                $status->action = 'existing_user_no_login_autolink_off';
+
+                                return $status;
+                            }
+                            // Automatic link is enabled.
+                            else
+                            {
+                                // Automatic link is enabled, but not available for admins.
+                                if ($settings['auto_link_accounts'] == 2 && in_array('administrator', $user->roles))
+                                {
+                                    // Add log.
+                                    single_sign_on_core_dump('[CALLBACK] [U' . $uid . '] User is admin and autolink is disabled for admins');
+
+                                    // Update status.
+                                    $status->action = 'existing_user_no_login_autolink_not_allowed';
+
+                                    return $status;
+                                }
+
+                                // The email has been verified.
+                                if ($email_is_verified)
+                                {
+                                    // Add Log.
+                                    single_sign_on_core_dump('[CALLBACK] [U' . $uid . '] Autolink enabled/Email verified. Linking user_token [' . $user_token . '] to user');
+
+                                    // Add to database.
+                                    single_sign_on_core_add_local_storage_tokens_for_uid($uid, $user_token, $identity_token, $provider);
+
+                                    // Update Status.
+                                    $status->action = 'existing_user_login_email_verified';
+
+                                    return $status;
+                                }
+                                // The email has NOT been verified.
+                                else
+                                {
+                                    // We can use unverified emails.
+                                    if (!empty($settings['link_unverified_accounts']))
+                                    {
+                                        // Add Log.
+                                        single_sign_on_core_dump('[CALLBACK] [U' . $uid . '] Autolink enabled/Email unverified. Linking user_token [' . $user_token . '] to user');
+
+                                        // Add to database.
+                                        single_sign_on_core_add_local_storage_tokens_for_uid($uid, $user_token, $identity_token, $provider);
+
+                                        // Update Status.
+                                        $status->action = 'existing_user_login_email_unverified';
+
+                                        return $status;
+                                    }
+                                    // We cannot use unverified emails.
+                                    else
+                                    {
+                                        // Add Log.
+                                        single_sign_on_core_dump('[CALLBACK] [U' . $uid . '] Autolink enabled/Unverified email not allowed. May not link user_token [' . $user_token . '] to user');
+
+                                        // Update Status.
+                                        $status->action = 'existing_user_no_login_autolink_off_unverified_emails';
+
+                                        return $status;
+                                    }
+                                }
+                            }
+                        }
+                        // No customer found
+                        else
+                        {
+                            // Add Log
+                            single_sign_on_core_dump('[CALLBACK] No user found for email [' . $email . ']');
+                        }
+                    }
+                    else
+                    {
+                        // Create Random email.
+                        $email = single_sign_on_core_create_random_email();
+                        $email_is_verified = false;
+                        $email_is_random = true;
+
+                        // Add Log.
+                        single_sign_on_core_dump('[CALLBACK] Identity provides no email address. Random address [' . $email . '] generated.');
+                    }
+
+                    // /////////////////////////////////////////////////////////////////////////
+                    // This is a new user
+                    // /////////////////////////////////////////////////////////////////////////
+
+                    // We cannot create new accounts
+                    if (empty($settings['auto_create_accounts']))
+                    {
+                        // Add Log
+                        single_sign_on_core_dump('[SSO Callback] New user, but account creation disabled. Cannot create user for user_token [' . $user_token . ']');
+
+                        // Update Status
+                        $status->action = 'new_user_no_login_autocreate_off';
+
+                        return $status;
+                    }
+
+                    // Add Log
+                    single_sign_on_core_dump('[SSO Callback] New user, account creation enabled. Creating user for user_token [' . $user_token . ']');
+                    // Extract firstname.
+                    $user_first_name = (!empty($data->user->identity->name->givenName) ? $data->user->identity->name->givenName : '');
+
+                    // Extract lastname.
+                    $user_last_name = (!empty($data->user->identity->name->familyName) ? $data->user->identity->name->familyName : '');
+
+                    // provider name
+                    $provider = !empty($data->user->identity->provider) ? $data->user->identity->provider : '';
+
+                    // Forge login.
+                    $user_login = '';
+                    if (!empty($data->user->identity->preferredUsername))
+                    {
+                        $user_login = $data->user->identity->preferredUsername;
+                    }
+                    elseif (!empty($data->user->identity->displayName))
+                    {
+                        $user_login = $data->user->identity->displayName;
+                    }
+                    elseif (!empty($data->user->identity->name->formatted))
+                    {
+                        $user_login = $data->user->identity->name->formatted;
+                    }
+                    else
+                    {
+                        $user_login = trim($user_first_name . ' ' . $user_last_name);
+                    }
+
+
+                    // The username cannot begin/end with a space.
+                    $user_login = trim($user_login);
+
+                    // The username cannot contain multiple spaces in a row.
+                    $user_login = preg_replace('!\s+!', ' ', $user_login);
+
+                    // Forge unique username.
+                    if (strlen(trim($user_login)) == 0 || single_sign_on_core_get_uid_for_name(trim($user_login)) !== false)
+                    {
+                        $i = 1;
+                        $user_login = $provider . t('User');
+                        while (single_sign_on_core_get_uid_for_name($user_login) !== false)
+                        {
+                            $user_login = $provider . t('User') . ($i++);
+                        }
+                    }
+
+                    // Forge password.
+                    $user_password = user_password(8);
+
+                    // Setup the default users roles.
+                    $user_roles = array(
+                        DRUPAL_AUTHENTICATED_RID => 'authenticated user'
+                    );
+
+                    // Setup the user fields.
+                    $user_fields = array(
+                        'name' => $user_login,
+                        'mail' => $email,
+                        'pass' => $user_password,
+                        'status' => 1, // must be activated
+                        'init' => $email,
+                        'roles' => $user_roles
+                    );
+
+                    // Create a new user.
+                    $account = user_save('', $user_fields);
+
+                    // The new account has been created correctly.
+                    if ($account !== FALSE) {
+
+                         // Log the new user in.
+                        if (($uid = user_authenticate($user_login, $user_password)) !== FALSE) {
+
+                            global $user;
+
+                            //  Add log.
+                            single_sign_on_core_dump('[SSO Callback] New user [' . $uid . '] created for user_token [' . $user_token . ']');
+
+                            // Add to database.
+                            $add_tokens = single_sign_on_core_add_local_storage_tokens_for_uid($uid, $user_token, $identity_token, $provider);
+
+                            // Loads a user object.
+                            $user = user_load($uid);
+
+                            // Finalize the login process.
+                            $login_array = array(
+                                'name' => $user_login
+                            );
+
+                            user_login_finalize($login_array);
+
+                            // Update status.
+                            $status->action = 'new_user_created_login';
+                            $status->user_token = $user_token;
+                            $status->identity_token = $identity_token;
+                            $status->user = $user;
+
+                        }
+                    }
+                    else
+                    {
+                        $status->action = 'user_creation_failed';
+                    }
+                }
+                else
+                {
+                    $status->action = 'api_data_decode_failed';
+                }
+            }
+            else
+            {
+                $status->action = 'api_connection_failed';
+            }
+        }
+        else
+        {
+            $status->action = 'extension_not_setup';
+        }
+    }
+    else
+    {
+        $status->action = 'no_callback_data_received';
+    }
+
+    return $status;
+}

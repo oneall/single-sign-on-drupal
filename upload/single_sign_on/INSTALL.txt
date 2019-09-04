@@ -1,7 +1,7 @@
 Extension Installation
 
 A complete installation guide is available here:
-http://docs.oneall.loc/plugins/guide/single-sign-on-drupal/8/
+http://docs.oneall.loc/plugins/guide/single-sign-on-drupal/7/
 
 NOTE: 
 

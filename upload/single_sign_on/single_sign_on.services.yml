@@ -1,5 +1,0 @@
-services:
-  single_sign_on.event_subscriber:
-    class: Drupal\single_sign_on\EventSubscriber\SingleSignOnSubscriber
-    tags:
-      - {name: event_subscriber}

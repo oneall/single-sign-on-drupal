@@ -49,7 +49,7 @@ Visit us at:
 http://www.oneall.com
 
 The Single Sign-On documentation is available at:
-http://docs.oneall.com/plugins/guide/single-sign-on-drupal/8/
+http://docs.oneall.com/plugins/guide/single-sign-on-drupal/7/
 
 
 == Support & Help

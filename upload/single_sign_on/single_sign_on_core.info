@@ -1,0 +1,4 @@
+name = "OneAll Single Sign-On, Core"
+description = Contains the core functions used by the OneAll Single Sign-On Module.
+package = "OneAll Single Sign-On" 
+core = 7.x

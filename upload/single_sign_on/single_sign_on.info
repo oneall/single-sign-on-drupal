@@ -1,0 +1,6 @@
+name = "OneAll Single Sign-On"
+description = Automatically creates accounts and signs users in as they browse between multiple and independent Drupal websites in your ecosystem.
+package = "OneAll Single Sign-On"
+core = 7.x
+configure = admin/config/people/single_sign_on
+dependencies[] = "single_sign_on_core"
