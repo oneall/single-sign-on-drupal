@@ -1,6 +1,6 @@
 ## Available Versions
-* **Single Sign-On for Drupal 7.x**
 * [Single Sign-On for Drupal 8.0+](https://github.com/oneall/single-sign-on-drupal/tree/drupal/8.0+)
+* **Single Sign-On for Drupal 7.x**
 
 
 # Single Sign-On for Drupal 7.x
@@ -40,7 +40,7 @@ and can be implemented on any other platform using our [SSO API](https://docs.on
 
 
 ### Installation Guide
-https://docs.oneall.com/plugins/guide/single-sign-on-drupal/8/
+https://docs.oneall.com/plugins/guide/single-sign-on-drupal/7/
 
 
 ### Official Drupal Extension
