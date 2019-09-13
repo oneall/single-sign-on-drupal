@@ -7,8 +7,11 @@ jQuery(document).ready(function($){
         dataType: 'json', 
         success: function(result)
         {
-           	if (result != undefined && typeof result === 'string' && result.length)
+           	if (result != undefined && typeof result === 'string')
            	{
+                /* Initiates the OneAll asynchronous queue */
+                var _oneall = window._oneall || [];
+                
                 // Check for existing session.
                 if (result == 'check_session')
                 {
@@ -16,7 +19,7 @@ jQuery(document).ready(function($){
                 } 
                 // Refresh current session.
                 else
-                {
+                {   
                     if (result != 'no_token_found')
                     {
                         _oneall.push(['single_sign_on', 'do_register_sso_session', result]);
@@ -33,7 +36,7 @@ jQuery(document).ready(function($){
         dataType: 'json', 
         success: function(result)
         {
-            if (result != undefined && typeof result === 'string' && result.length)
+            if (result != undefined && typeof result === 'string')
             {
                 $('#single_sign_on_notice_container').html(result);
             }
