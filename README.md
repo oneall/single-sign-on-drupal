@@ -1,3 +1,7 @@
+## Available Versions
+* **Single Sign-On for Drupal 8.x**
+* [Single Sign-On for Drupal 7.x](https://github.com/oneall/single-sign-on-drupal/tree/drupal/7.x)
+
 # Single Sign-On for Drupal 8.x
 Single Sign-On (SSO) automatically creates accounts and signs users in as they browse between multiple and independent Drupal websites in your ecosystem. Take away the need for yours users to create new accounts or re-enter their authentication credentials when they switch from one of your websites to another. 
 
