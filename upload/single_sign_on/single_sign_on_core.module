@@ -12,7 +12,38 @@ define ('SINGLE_SIGN_ON_LOGOUT_WAIT_RELOGIN_DEFAULT', 60*60);
 define ('SINGLE_SIGN_ON_COOKIE_DOMAIN', false);
 define ('SINGLE_SIGN_ON_COOKIEPATH', '/');
 define ('SINGLE_SIGN_ON_VERSION', '1.3');
-define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.com');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.com');
+
+
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
 
 
 /**
@@ -467,6 +498,97 @@ function single_sign_on_core_start_session_for_identity_token ($identity_token)
 
 
 /**
+ * Get Single Sign-On session for the given identity_token.
+ */
+function single_sign_on_core_get_session_for_identity_token ($identity_token)
+{
+    // Result container.
+    $status = new stdClass ();
+    $status->is_successfull = false;
+
+    // We need the identity_token to create a session.
+    if (!empty ($identity_token))
+    {
+        // Read settings.
+        $settings = single_sign_on_core_get_settings();
+
+        // We cannot make a connection without the subdomain.
+        if (!empty ($settings ['api_subdomain']))
+        {
+            // ////////////////////////////////////////////////////////////////////////////////////////////////
+            // Start a new Single Sign-On Session
+            // ////////////////////////////////////////////////////////////////////////////////////////////////
+
+            // API Endpoint: http://docs.oneall.com/api/resources/sso/identity/start-session/
+            $api_resource_url = get_api_url() . '/sso/sessions/identities/' . $identity_token . '.json';
+
+            // API Options.
+            $api_options = array(
+                'api_key' => $settings ['api_key'],
+                'api_secret' => $settings ['api_secret']
+            );
+
+            // Create Session
+            $result = single_sign_on_core_do_api_request ($api_resource_url, 'GET', $api_options);
+
+            // Check result. 201 Returned !!!
+            if (is_object ($result) && property_exists ($result, 'http_code') && property_exists ($result, 'http_data'))
+            {
+                // Success.
+                if ($result->http_code == 200)
+                {
+                    // Decode result.
+                    $decoded_result = @json_decode ($result->http_data);
+
+                    // Check result.
+                    if (is_object ($decoded_result) && isset ($decoded_result->response->result->data->sso_session))
+                    {
+                        // Update status.
+                        $status->action = 'get_session';
+                        $status->sso_session_token = $decoded_result->response->result->data->sso_session->sso_session_token;
+                        $datetime_expiration = new Datetime($decoded_result->response->result->data->sso_session->date_expiration);
+                        $status->date_expiration = $datetime_expiration->format('U');
+                        $status->is_successfull = true;
+
+                        // Add log.
+                        single_sign_on_core_dump ('[GET SESSION] Session [' . $status->sso_session_token . '] for identity [' . $identity_token . '] get from Cloud Storage');
+                    }
+                    else
+                    {
+                        $status->action = 'invalid_user_object';
+                    }
+                }
+                elseif ($result->http_code == 404)
+                {
+                    $status->action = 'invalid_identity_token';
+                }
+                else
+                {
+                    $status->action = ('http_error_' . $result->http_code);
+                }
+            }
+            else
+            {
+                $status->action = 'http_request_failed';
+            }
+
+        }
+        else
+        {
+            $status->action = 'extension_not_setup';
+        }
+    }
+    else
+    {
+        $status->action = 'empty_identity_token';
+    }
+
+    // Done.
+    return $status;
+}
+
+
+/**
  * Open a new single sign-on session for the given user.
  */
 function single_sign_on_core_start_session_for_user ($user, $password)
@@ -482,7 +604,7 @@ function single_sign_on_core_start_session_for_user ($user, $password)
         $token = single_sign_on_core_get_user_token_information_for_uid ($user->uid);
 
         // User has no token yet.
-        if (empty($token->user_token))
+        if (empty($token->user_token) || (int)$token->sso_session_token_next_update < time())
         {
             // Add log.
             single_sign_on_core_dump ('[START SESSION] [UID' . $user->uid . '] User has no token. Creating token.');
@@ -493,6 +615,9 @@ function single_sign_on_core_start_session_for_user ($user, $password)
             // User added.
             if ($token->is_successfull === true)
             {
+                // Update All token to be up-to-date with OneAll Database
+                single_sign_on_core_add_local_storage_tokens_for_uid($user->uid, $token->user_token, $token->identity_token, $token->provider);
+
                 // Add log.
                 single_sign_on_core_dump ('[START SESSION] [UID' . $user->uid . '] Tokens created, user_token [' . $token->user_token . '] identity_token [' . $token->identity_token . ']');
 
@@ -779,7 +904,7 @@ function single_sign_on_core_do_api_request($url, $method, $options = [], $timeo
 /**
  * Return the oasl_user for a user_token.
  */
-function single_sign_on_core_get_oasl_user_for_user_token($uid)
+function single_sign_on_core_get_oasl_user_for_user_id($uid)
 {
     // Read user for token.
     $query = db_select('oasl_user','u');
@@ -791,10 +916,10 @@ function single_sign_on_core_get_oasl_user_for_user_token($uid)
 /**
  * Return the oasl_identity for a user_token.
  */
-function single_sign_on_core_get_oasl_identity_for_user_token($uid)
+function single_sign_on_core_get_oasl_identity_for_user_id($uid)
 {
 
-    $oasl_user = single_sign_on_core_get_oasl_user_for_user_token($uid);
+    $oasl_user = single_sign_on_core_get_oasl_user_for_user_id($uid);
 
     if($oasl_user)
     {
@@ -859,8 +984,8 @@ function single_sign_on_core_get_uid_for_email($mail) {
  * Return the user_token for a user_id.
  */
 function single_sign_on_core_get_user_token_information_for_uid($user_id) {
-    $oasl_user = single_sign_on_core_get_oasl_user_for_user_token($user_id);
-    $oasl_identity = single_sign_on_core_get_oasl_identity_for_user_token($user_id);
+    $oasl_user = single_sign_on_core_get_oasl_user_for_user_id($user_id);
+    $oasl_identity = single_sign_on_core_get_oasl_identity_for_user_id($user_id);
 
     $token = new stdClass();
 
@@ -877,38 +1002,10 @@ function single_sign_on_core_get_user_token_information_for_uid($user_id) {
         $token->identity_provider = $oasl_identity->identity_provider;
         $token->sso_session_token = $oasl_identity->sso_session_token;
         $token->sso_session_token_expiration = $oasl_identity->sso_session_token_expiration;
+        $token->sso_session_token_next_update = $oasl_identity->sso_session_token_next_update;
     }
 
     return $token;
-}
-
-/**
- * Returns the sso session token of a user from the local database.
- */
-function single_sign_on_core_get_local_sso_session_token_for_user($user)
-{
-    // Result Container.
-    $status = new stdClass();
-    $status->is_successfull = false;
-
-    // Verify user object.
-    if (is_object($user) && !empty($user->uid))
-    {
-        // Load user's sso_session_token.
-        $sso_session_token = get_user_meta($user->uid, 'single_sign_on_sso_session_token', true);
-        $sso_session_token_expiration = get_user_meta($user->uid, 'single_sign_on_sso_session_token_expiration', true);
-
-        // Token found and not expired.
-        if (!empty($sso_session_token) && (empty($sso_session_token_expiration) || $sso_session_token_expiration >= time()))
-        {
-            // Update Status.
-            $status->sso_session_token = $sso_session_token;
-            $status->date_expiration = $sso_session_token_expiration;
-            $status->is_successfull = true;
-        }
-    }
-
-    return $status;
 }
 
 
@@ -994,6 +1091,7 @@ function single_sign_on_core_add_sso_session_token_to_identity_token($identity_t
     return db_update('oasl_identity')
     ->expression('sso_session_token', ':sso_session_token', array(':sso_session_token' => $sso_session_token))
     ->expression('sso_session_token_expiration', (int) $date_expiration)
+    ->expression('sso_session_token_next_update', (int) strtotime("+5 minutes"))
     ->condition('identity_token', $identity_token)
     ->execute();
 }
@@ -1005,6 +1103,7 @@ function single_sign_on_core_delete_sso_session_token_to_identity_token($identit
     return db_update('oasl_identity')
     ->expression('sso_session_token', 'NULL')
     ->expression('sso_session_token_expiration', 'NULL')
+    ->expression('sso_session_token_next_update', (int) strtotime("+5 minutes"))
     ->condition('identity_token', $identity_token)
     ->execute();
 }
@@ -1353,25 +1452,33 @@ function single_sign_on_core_synchronize_user_to_cloud_storage ($user, $password
         $api_options = array(
           'api_key' => $settings ['api_key'],
           'api_secret' => $settings ['api_secret'],
-          'api_data' => @json_encode (array(
+          'api_data' => array(
             'request' => array (
                 'synchronize' => array (
                     'identifier' => array (
                       'field' => 'login',
                       'value' => $user->mail
-                  ),
+                    ),
                     'user' => array (
                       'login' => $user->mail,
-                      'password' =>  $password,
-                      'identity' => $identity
-                  )
+                      'identity' => $identity                    
+                    )
                 )
             )
         )
-      )
       );
 
-            // Add User.
+        // do we need to set up a password ? 
+        if (!empty($password)){
+            $api_options['api_data']['request']['synchronize']['user']['password'] = $password;
+        }      
+
+        // Encode data  
+        $api_options['api_data'] = @json_encode ($api_options['api_data']);
+
+
+
+        // Add User.
         $result = single_sign_on_core_do_api_request ($api_resource_url, 'PUT', $api_options);
 
             // Check result.

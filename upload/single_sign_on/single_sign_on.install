@@ -107,6 +107,12 @@ function single_sign_on_schema() {
         'length' => '11',
         'not null' => FALSE
       ],
+      'sso_session_token_next_update' => [
+        'description' => 'SSO Token Next update verification',
+        'type' => 'int',
+        'length' => '11',
+        'not null' => FALSE
+      ],
       'num_logins' => [
         'description' => 'Number of logins',
         'type' => 'int',

@@ -338,7 +338,6 @@ function single_sign_on_user_logout($user)
 function single_sign_on_init()
 {
     global $user;
-
     // Read settings.
     $settings = single_sign_on_core_get_settings();
     
@@ -448,20 +447,53 @@ function single_sign_on_init()
         // No callback received
         case 'no_callback_data_received':
         default:
+
             // The user is logged in.
             if (user_is_logged_in())
             {
                 // Read the user's token.
                 $token = single_sign_on_core_get_user_token_information_for_uid($user->uid);
-
-                // We have a session token, refresh it.
-                if (!empty($token->sso_session_token))
+            
+                // We have a valid session token, refresh it.
+                if (!empty($token->sso_session_token) && (int)$token->sso_session_token_next_update > time())
                 {
                     single_sign_on_core_dump('[INIT] @' . $status->action . '] [UID' . $user->uid . '] - User is logged in, refreshing session token ['.$token->sso_session_token.']');
                 }
                 else
-                {
-                    single_sign_on_core_dump('[INIT] @' . $status->action . '] [UID' . $user->uid . '] - User is logged in but has no sso session token yet');
+                {    
+
+                    single_sign_on_core_dump('[INIT] @' . $status->action . '] [UID' . $user->uid . '] - User is logged in but has no sso session token yet - Check for distant sso session');
+
+                    // Check if already logged in user has Cloud Storage user (should have)
+                    $cloud_user = single_sign_on_core_get_oasl_identity_for_user_id($user->uid);
+                    if (empty($cloud_user)) {
+
+                        // Update user to cloud storage.
+                        $cloud_user = single_sign_on_core_synchronize_user_to_cloud_storage ($user, '');
+
+                        // Save Cloud User
+                        if ($cloud_user->is_successfull === true)
+                        {
+                            // Update All token to be up-to-date with OneAll Database
+                            single_sign_on_core_add_local_storage_tokens_for_uid($user->uid, $cloud_user->user_token, $cloud_user->identity_token, $cloud_user->provider);
+                        }
+                    }
+
+                    // Update SSO Token
+                    $synchronized_sso_token = single_sign_on_core_get_session_for_identity_token ($cloud_user->identity_token);
+
+
+                    // Save Cloud User
+                    if (!empty($synchronized_sso_token) && $synchronized_sso_token->is_successfull === true)
+                    {
+                        // Update sso token to be up-to-date with distant OneAll Database
+                        single_sign_on_core_add_sso_session_token_to_identity_token($cloud_user->identity_token, $synchronized_sso_token->sso_session_token, $synchronized_sso_token->date_expiration);
+                    
+                    // No distant SSO token => remove local one
+                    } else {
+                        single_sign_on_core_delete_sso_session_token_to_identity_token($cloud_user->identity_token);
+                    }
+                    
                 }     
             }
             else
