@@ -12,38 +12,7 @@ define ('SINGLE_SIGN_ON_LOGOUT_WAIT_RELOGIN_DEFAULT', 60*60);
 define ('SINGLE_SIGN_ON_COOKIE_DOMAIN', false);
 define ('SINGLE_SIGN_ON_COOKIEPATH', '/');
 define ('SINGLE_SIGN_ON_VERSION', '1.3');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.com');
-
-
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-// define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
-define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.loc');
+define ('SINGLE_SIGN_ON_API_DOMAIN', 'api.oneall.com');
 
 
 /**
