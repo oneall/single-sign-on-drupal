@@ -6,6 +6,20 @@
  */
 
 /**
+ * Implements hook_update_7000().
+ */
+function single_sign_on_update_7000() {
+    
+  // Persistent login
+  db_add_field('oasl_identity', 'sso_session_token_next_update', array(
+    'type' => 'int',
+    'length' => '11',
+    'not null' => FALSE,
+    'description' => 'SSO Token Next update verification',
+  ));
+}
+
+/**
  * Implements hook_schema().
  */
 function single_sign_on_schema() {
