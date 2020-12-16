@@ -202,7 +202,7 @@ class SingleSignOnAdminSettings extends ConfigFormBase
                 '1' => $this->t('Enable automatic account creation (Default)'),
                 '0' => $this->t('Disable automatic account creation')
             ],
-            '#default_value' => ( ! empty($settings['auto_create_accounts']) ? 1 : 0)
+            '#default_value' => (!empty($settings['auto_create_accounts']) ? 1 : 0)
         ];
 
         $form['single_sign_on_settings_general']['auto_link_accounts'] = [
@@ -214,7 +214,7 @@ class SingleSignOnAdminSettings extends ConfigFormBase
                 '1' => $this->t('Enable automatic link for all types of accounts'),
                 '2' => $this->t('Enable automatic link for all types of accounts, except the admin account (Default)')
             ],
-            '#default_value' => ( ! empty($settings['auto_link_accounts']) ? $settings['auto_link_accounts'] : 0)
+            '#default_value' => (!empty($settings['auto_link_accounts']) ? $settings['auto_link_accounts'] : 0)
         ];
 
         $form['single_sign_on_settings_general']['use_account_reminder'] = [
@@ -225,7 +225,7 @@ class SingleSignOnAdminSettings extends ConfigFormBase
                 '1' => $this->t('Enable account reminder (Default)'),
                 '0' => $this->t('Disable account reminder')
             ],
-            '#default_value' => ( ! empty($settings['use_account_reminder']) ? 1 : 0)
+            '#default_value' => (!empty($settings['use_account_reminder']) ? 1 : 0)
         ];
 
         $form['single_sign_on_settings_general']['destroy_session_on_logout'] = [
@@ -236,7 +236,7 @@ class SingleSignOnAdminSettings extends ConfigFormBase
                 '1' => $this->t('Yes. Destroy the SSO session on logout (Default, Recommended)'),
                 '0' => $this->t('No. Keep the SSO session on logout.')
             ],
-            '#default_value' => ( ! empty ($settings['destroy_session_on_logout']) ? 1 : 0)
+            '#default_value' => (!empty($settings['destroy_session_on_logout']) ? 1 : 0)
         ];
 
         $form['single_sign_on_settings_general']['logout_wait_relogin'] = [
@@ -260,7 +260,7 @@ class SingleSignOnAdminSettings extends ConfigFormBase
                 '1' => $this->t('Yes, enable logging'),
                 '0' => $this->t('No, disabled logging')
             ],
-            '#default_value' => ( ! empty($settings['enable_debug_logs']) ? 1 : 0)
+            '#default_value' => (!empty($settings['enable_debug_logs']) ? 1 : 0)
         ];
 
         $form['actions']['#type'] = 'actions';
@@ -344,19 +344,19 @@ class SingleSignOnAdminSettings extends ConfigFormBase
             $value = trim($value);
 
             // Check if settings already exists.
-            $oaslsid = db_select('oasl_settings', 'o')->fields('o', ['oaslsid'])->condition('setting', $setting, '=')->execute()->fetchField();
+            $oaslsid = Database::getConnection()->select('oasl_settings', 'o')->fields('o', ['oaslsid'])->condition('setting', $setting, '=')->execute()->fetchField();
             if (is_numeric($oaslsid))
             {
                 // Update setting.
-                db_update('oasl_settings')->fields(['value' => $value])->condition('oaslsid', $oaslsid, '=')->execute();
+                Database::getConnection()->update('oasl_settings')->fields(['value' => $value])->condition('oaslsid', $oaslsid, '=')->execute();
             }
             else
             {
                 // Add setting.
-                db_insert('oasl_settings')->fields(['setting' => $setting, 'value' => $value])->execute();
+                Database::getConnection()->insert('oasl_settings')->fields(['setting' => $setting, 'value' => $value])->execute();
             }
         }
-        drupal_set_message(t('Settings saved successfully'), 'status single_sign_on');
+        \Drupal::messenger()->addMessage(t('Settings saved successfully'));
 
         // Clear cache.
         \Drupal::cache()->deleteAll();
@@ -406,15 +406,15 @@ function ajax_api_connection_autodetect($form, FormStateInterface $form_state)
     {
         $form['single_sign_on_api_connection']['http_handler']['#value'] = $http_handler;
         $form['single_sign_on_api_connection']['http_protocol']['#value'] = $http_protocol;
-        drupal_set_message(t('Autodetected @handler on port @port - do not forget to save your changes!', [
+        \Drupal::messenger()->addStatus(t('Autodetected @handler on port @port - do not forget to save your changes!', [
             '@handler' => ($http_handler == 'curl' ? 'PHP cURL' : 'PHP fsockopen'),
             '@port' => ($http_protocol == 'http' ? '80/HTTP' : '443/HTTPS')
-        ]), 'status single_sign_on');
+        ]));
     }
     // Nothing works.
     else
     {
-        drupal_set_message(t('Sorry, but the autodetection failed. Please try to open port 80/443 for outbound requests and install PHP cURL/fsockopen.'), 'error single_sign_on');
+        \Drupal::messenger()->addError(t('Sorry, but the autodetection failed. Please try to open port 80/443 for outbound requests and install PHP cURL/fsockopen.'));
     }
 
     return $form['single_sign_on_api_connection'];
@@ -463,7 +463,7 @@ function ajax_check_api_connection_settings($form, FormStateInterface $form_stat
         else
         {
             // Build API Settings.
-            $api_domain = $protocol . '://' . $api_subdomain . '.'.SINGLE_SIGN_ON_API_DOMAIN.'/tools/ping.json';
+            $api_domain = $protocol . '://' . $api_subdomain . '.' . SINGLE_SIGN_ON_API_DOMAIN . '/tools/ping.json';
             $api_options = [
                 'api_key' => $api_key,
                 'api_secret' => $api_secret
@@ -508,11 +508,11 @@ function ajax_check_api_connection_settings($form, FormStateInterface $form_stat
     // Error.
     if (!empty($success_message))
     {
-        drupal_set_message($success_message, 'status single_sign_on');
+        \Drupal::messenger()->addStatus($success_message);
     }
     else
     {
-        drupal_set_message($error_message, 'error single_sign_on');
+        \Drupal::messenger()->addError($error_message);
     }
 
     return $form['single_sign_on_api_settings'];

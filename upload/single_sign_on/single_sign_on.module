@@ -4,6 +4,8 @@
  * @file
  * Contains the hook functions used by the OneAll Single Sign-On Login Module.
  */
+use Drupal\user\Entity\User;
+use Drupal\Core\Link;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -308,7 +310,7 @@ function single_sign_on_get_user_notice($only_non_displayed)
                         if (!$only_non_displayed || empty($user_notice['displayed']))
                         {
                             // Read user.
-                            $user = user_load($user_notice['userid']);
+                            $user = \Drupal::service('entity_type.manager')->getStorage('user')->load($user_notice['userid']);
 
                             // Verify user object.
                             if (is_object($user) && ! empty ($user->id()))
@@ -705,7 +707,7 @@ function single_sign_on_start_session_for_user ($user, $password)
   $status->is_successfull = false;
 
   // Read user.
-  $user = \Drupal\user\Entity\User::load(\Drupal::currentUser()->id());
+  $user = User::load(\Drupal::currentUser()->id());
   $uid = $user->id();
 
   // User is logged in.
@@ -1042,7 +1044,7 @@ function single_sign_on_do_api_request($url, $method, $options = [], $timeout = 
 function single_sign_on_get_oasl_user_for_user_token($uid)
 {
     // Read user for token.
-    $query = db_select('oasl_user','u');
+    $query = Database::getConnection()->select('oasl_user','u');
     $query->fields('u')->condition('user_id', $uid, '=');
     $oasl_user=$query->execute()->fetch();
     return (empty($oasl_user) ? FALSE : $oasl_user);
@@ -1059,7 +1061,7 @@ function single_sign_on_get_oasl_identity_for_user_token($uid)
     if($oasl_user)
     {
         // oasl_user
-        $query = db_select('oasl_identity','u');
+        $query = Database::getConnection()->select('oasl_identity','u');
         $query->fields('u')->condition('oasl_user_id', $oasl_user->oasl_user_id, '=');
         $oasl_identity=$query->execute()->fetch();
     }
@@ -1083,7 +1085,7 @@ function single_sign_on_get_user_for_user_token($user_token) {
  * Return the oasl_user_id for a user_id.
  */
 function single_sign_on_get_oasl_user_id_for_uid($user_id) {
-  $oasl_user_id = db_query("SELECT oasl_user_id FROM {oasl_user} WHERE user_id = :user_id", [':user_id' => $user_id])->fetchField();
+  $oasl_user_id = Database::getConnection()->query("SELECT oasl_user_id FROM {oasl_user} WHERE user_id = :user_id", [':user_id' => $user_id])->fetchField();
   return (is_numeric($oasl_user_id) ? $oasl_user_id : FALSE);
 }
 
@@ -1091,7 +1093,7 @@ function single_sign_on_get_oasl_user_id_for_uid($user_id) {
  * Return the oasl_user_id for a user_token.
  */
 function single_sign_on_get_oasl_user_id_for_user_token($user_token) {
-  $oasl_user_id = db_query("SELECT oasl_user_id FROM {oasl_user} WHERE user_token = :token", [':token' => $user_token])->fetchField();
+  $oasl_user_id = Database::getConnection()->query("SELECT oasl_user_id FROM {oasl_user} WHERE user_token = :token", [':token' => $user_token])->fetchField();
   return (is_numeric($oasl_user_id) ? $oasl_user_id : FALSE);
 }
 
@@ -1099,7 +1101,7 @@ function single_sign_on_get_oasl_user_id_for_user_token($user_token) {
  * Return the user_id for a user_token.
  */
 function single_sign_on_get_uid_for_user_token($user_token) {
-  $user_id = db_query("SELECT user_id FROM {oasl_user} WHERE user_token = :token", [':token' => $user_token])->fetchField();
+  $user_id = Database::getConnection()->query("SELECT user_id FROM {oasl_user} WHERE user_token = :token", [':token' => $user_token])->fetchField();
   return (is_numeric($user_id) ? $user_id : FALSE);
 }
 
@@ -1107,7 +1109,7 @@ function single_sign_on_get_uid_for_user_token($user_token) {
  * Return the user_token for a user_id.
  */
 function single_sign_on_get_user_token_for_uid($user_id) {
-  $user_token = db_query("SELECT user_token FROM {oasl_user} WHERE user_id = :user_id", [':user_id' => $user_id])->fetchField();
+  $user_token = Database::getConnection()->query("SELECT user_token FROM {oasl_user} WHERE user_id = :user_id", [':user_id' => $user_id])->fetchField();
   return (!empty($user_token) ? $user_token : FALSE);
 }
 
@@ -1201,7 +1203,7 @@ function single_sign_on_link_user_token_to_user_id($user_id, $user_token) {
     if (!$oasl_user_id){
 
         // Add identity.
-        return db_insert('oasl_user')->fields([
+        return Database::getConnection()->insert('oasl_user')->fields([
           'user_token' => $user_token,
           'user_id' => $user_id,
           'date_added' => time()
@@ -1217,7 +1219,7 @@ function single_sign_on_link_user_token_to_user_id($user_id, $user_token) {
  * Return the oasl_identity_id for a oasl_user_id.
  */
 function single_sign_on_get_oasl_identity_id_for_oasl_user_id($oasl_user_id) {
-  $oasl_identity_id = db_query("SELECT oasl_identity_id FROM {oasl_identity} WHERE oasl_user_id = :oasl_user_id", [':oasl_user_id' => $oasl_user_id])->fetchField();
+  $oasl_identity_id = Database::getConnection()->query("SELECT oasl_identity_id FROM {oasl_identity} WHERE oasl_user_id = :oasl_user_id", [':oasl_user_id' => $oasl_user_id])->fetchField();
   return (!empty($oasl_identity_id) ? $oasl_identity_id : FALSE);
 }
 
@@ -1225,7 +1227,7 @@ function single_sign_on_get_oasl_identity_id_for_oasl_user_id($oasl_user_id) {
  * Return the identity_token for a oasl_user_id.
  */
 function single_sign_on_get_identity_token_for_oasl_user_id($oasl_user_id) {
-  $identity_token = db_query("SELECT identity_token FROM {oasl_identity} WHERE oasl_user_id = :oasl_user_id", [':oasl_user_id' => $oasl_user_id])->fetchField();
+  $identity_token = Database::getConnection()->query("SELECT identity_token FROM {oasl_identity} WHERE oasl_user_id = :oasl_user_id", [':oasl_user_id' => $oasl_user_id])->fetchField();
   return (!empty($identity_token) ? $identity_token : FALSE);
 }
 
@@ -1233,7 +1235,7 @@ function single_sign_on_get_identity_token_for_oasl_user_id($oasl_user_id) {
  * Return the identity_token for a identity_token.
  */
 function single_sign_on_get_userid_for_identity_token($identity_token) {
-  $oasl_user_id = db_query("SELECT oasl_user_id FROM {oasl_identity} WHERE identity_token = :identity_token", [':identity_token' => $identity_token])->fetchField();
+  $oasl_user_id = Database::getConnection()->query("SELECT oasl_user_id FROM {oasl_identity} WHERE identity_token = :identity_token", [':identity_token' => $identity_token])->fetchField();
   return (!empty($oasl_user_id) ? $oasl_user_id : FALSE);
 }
 
@@ -1249,7 +1251,7 @@ function single_sign_on_link_user_to_identity($oasl_user_id, $identity_token, $i
     if (!$existing_token_user_id){
 
         // Add identity.
-        return db_insert('oasl_identity')->fields([
+        return Database::getConnection()->insert('oasl_identity')->fields([
           'oasl_user_id' => $oasl_user_id,
           'identity_token' => $identity_token,
           'identity_provider' => $identity_provider,
@@ -1261,7 +1263,7 @@ function single_sign_on_link_user_to_identity($oasl_user_id, $identity_token, $i
     } else {
 
         // update identity.
-        return db_update('oasl_identity')
+        return Database::getConnection()->update('oasl_identity')
             ->expression('num_logins', 'num_logins + :num_logins', array(':num_logins' => 1))
             ->expression('date_updated', time())
             ->condition('oasl_user_id', $existing_token_user_id)
@@ -1285,7 +1287,7 @@ function single_sign_on_add_local_storage_tokens_for_uid($uid, $user_token, $ide
  * Add SSO Session to identity_id
  */
 function single_sign_on_add_sso_session_token_to_oasl_identity_id($oasl_identity_id, $sso_session_token, $date_expiration = null) {
-    return db_update('oasl_identity')
+    return Database::getConnection()->update('oasl_identity')
         ->expression('sso_session_token', ':sso_session_token', array(':sso_session_token' => $sso_session_token))
         ->expression('sso_session_token_expiration', (int) $date_expiration)
         ->condition('oasl_identity_id', $oasl_identity_id)
@@ -1297,7 +1299,7 @@ function single_sign_on_add_sso_session_token_to_oasl_identity_id($oasl_identity
  */
 function single_sign_on_add_sso_session_token_to_identity_token($identity_token, $sso_session_token, $date_expiration = null) {
 
-    return db_update('oasl_identity')
+    return Database::getConnection()->update('oasl_identity')
         ->expression('sso_session_token', ':sso_session_token', array(':sso_session_token' => $sso_session_token))
         ->expression('sso_session_token_expiration', (int) $date_expiration)
         ->condition('identity_token', $identity_token)
@@ -1308,7 +1310,7 @@ function single_sign_on_add_sso_session_token_to_identity_token($identity_token,
  * Delete SSO Session to identity_token
  */
 function single_sign_on_delete_sso_session_token_to_identity_token($identity_token) {
-    return db_update('oasl_identity')
+    return Database::getConnection()->update('oasl_identity')
         ->expression('sso_session_token', 'NULL')
         ->expression('sso_session_token_expiration', 'NULL')
         ->condition('identity_token', $identity_token)
@@ -1325,14 +1327,14 @@ function single_sign_on_delete_sso_session_token_to_oasl_uid($uid) {
             SET sso_session_token = NULL, sso_session_token_expiration = NULL
             where user_id = :user_id";
 
-    return db_query($sql, array(':user_id' => $uid));
+    return Database::getConnection()->query($sql, array(':user_id' => $uid));
 }
 
 /**
  * Delete SSO Session to oasl_identity_id
  */
 function single_sign_on_delete_sso_session_token_to_oasl_identity_id($oasl_identity_id) {
-    return db_update('oasl_identity')
+    return Database::getConnection()->update('oasl_identity')
         ->expression('sso_session_token', 'NULL')
         ->expression('sso_session_token_expiration', 'NULL')
         ->condition('oasl_identity_id', $oasl_identity_id)
@@ -1354,7 +1356,7 @@ function single_sign_on_insert_notice(array $notice_data) {
     if (!$notices){
 
         // Add notice.
-        return db_insert('oasl_settings')->fields([
+        return Database::getConnection()->insert('oasl_settings')->fields([
           'setting' => 'notice',
           'value' => json_encode($notice_data)
         ])->execute();
@@ -1362,7 +1364,7 @@ function single_sign_on_insert_notice(array $notice_data) {
     } else {
 
         // update notice.
-        return db_update('oasl_settings')
+        return Database::getConnection()->update('oasl_settings')
             ->expression('value', ':notice_data' , array(':notice_data' => json_encode($notice_data)))
             ->condition('setting', 'notice')
             ->execute();
@@ -1376,7 +1378,7 @@ function single_sign_on_insert_notice(array $notice_data) {
 function single_sign_on_get_notices() {
 
     // oasl_settings
-    $query = db_select('oasl_settings','oasl_s');
+    $query = Database::getConnection()->select('oasl_settings','oasl_s');
     $query->fields('oasl_s')->condition('setting', 'notice', '=');
     $oasl_settings=$query->execute()->fetch();
 
@@ -1479,7 +1481,7 @@ function single_sign_on_get_settings() {
     $settings['blocked_wait_relogin'] = 3600;
 
     // Read settings.
-    $results = db_query("SELECT setting, value FROM {oasl_settings}");
+    $results = Database::getConnection()->query("SELECT setting, value FROM {oasl_settings}");
     foreach ($results as $result)
     {
         $settings[$result->setting] = $result->value;
@@ -1493,7 +1495,7 @@ function single_sign_on_get_settings() {
 function single_sign_on_preprocess_page(&$vars, $hook) {
   if (is_array($vars['page']) && isset($vars['page']) && isset($vars['page']['footer'])) {
     if (isset($vars['page']['footer']['system_powered-by']) && isset($vars['page']['footer']['system_powered-by']['#markup'])) {
-      $vars['page']['footer']['system_powered-by']['#markup'] .= '&nbsp; | &nbsp;' . Drupal::l(t('Single Sign-On'), Url::fromUri('http://www.oneall.com/services/customer-identity-management/single-sign-on/')) . ' ' . t('powered by') . ' ' . Drupal::l('OneAll', Url::fromUri('http://www.oneall.com/'));
+      $vars['page']['footer']['system_powered-by']['#markup'] .= '&nbsp; | &nbsp;' . Link::fromTextAndUrl(t('Single Sign-On'), Url::fromUri('http://www.oneall.com/services/customer-identity-management/single-sign-on/')) . ' ' . t('powered by') . ' ' . Link::fromTextAndUrl('OneAll', Url::fromUri('http://www.oneall.com/'));
     }
   }
 }
@@ -1620,7 +1622,7 @@ function single_sign_on_synchronize_user_to_cloud_storage ($user, $password)
 
             // Build Data
             $identity = array (
-              'preferredUsername' => $user->getUsername(),
+              'preferredUsername' => $user->getAccountName(),
               'displayName' => ( ! empty ($user->getDisplayName()) ? $user->getDisplayName() : $user->getAccountName())
             );
 

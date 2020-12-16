@@ -2,8 +2,7 @@ name: 'OneAll Single Sign-On'
 type: module
 description: 'Automatically creates accounts and signs users in as they browse between multiple and independent Drupal websites in your ecosystem.'
 package: 'OneAll Single Sign-On'
-core: 8.x
+core_version_requirement: ^8.8 || ^9
 configure: single_sign_on.admin_settings
-#dependencies:
 libraries:
   - single_sign_on/configuration
