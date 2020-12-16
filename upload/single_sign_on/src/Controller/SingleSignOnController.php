@@ -32,27 +32,30 @@ class SingleSignOnController extends ControllerBase
                 single_sign_on_dump('[SSO JS] [UID' . \Drupal::currentUser()->id() . '] Open session found, registering token [' . $token->sso_session_token . ']');
 
                 // Return token.
+
                 return $token->sso_session_token;
             }
         }
         // The user is currently not logged in.
         else
         {
-             // If this value is in the future, we should not try to login the user with SSO.
-             $login_wait = single_sign_on_get_login_wait_value_from_cookie();
+            // If this value is in the future, we should not try to login the user with SSO.
+            $login_wait = single_sign_on_get_login_wait_value_from_cookie();
 
-             // Try to login the user.
-             if ($login_wait < time())
-             {
+            // Try to login the user.
+            if ($login_wait < time())
+            {
                 // Add log.
                 single_sign_on_dump('[SSO JS] No open session found, checking...');
 
                 // Return status.
+
                 return 'check_session';
             }
         }
 
         // No action.
+
         return 'no_token_found';
     }
 
@@ -195,7 +198,7 @@ class SingleSignOnController extends ControllerBase
                                 single_sign_on_dump('[CALLBACK] [U' . $uid . '] User found for email [' . $email . ']');
 
                                 // Automatic link is disabled.
-                                if (empty ($settings['auto_link_accounts']))
+                                if (empty($settings['auto_link_accounts']))
                                 {
                                     // Add log.
                                     single_sign_on_dump('[CALLBACK] [U' . $uid . '] Autolink is disabled for everybody.');
@@ -220,6 +223,7 @@ class SingleSignOnController extends ControllerBase
                                         $status->action = 'existing_user_no_login_autolink_not_allowed';
 
                                         // Done.
+
                                         return $status;
                                     }
 
@@ -241,7 +245,7 @@ class SingleSignOnController extends ControllerBase
                                     else
                                     {
                                         // We can use unverified emails.
-                                        if (! empty ($settings['link_unverified_accounts']))
+                                        if (!empty($settings['link_unverified_accounts']))
                                         {
                                             // Add Log.
                                             single_sign_on_dump('[CALLBACK] [U' . $uid . '] Autolink enabled/Email unverified. Linking user_token [' . $user_token . '] to user');
@@ -291,7 +295,7 @@ class SingleSignOnController extends ControllerBase
                         // /////////////////////////////////////////////////////////////////////////
 
                         // We cannot create new accounts
-                        if ( ! empty ($settings['auto_create_accounts']))
+                        if (empty($settings['auto_create_accounts']))
                         {
                             // Add Log
                             single_sign_on_dump('[SSO Callback] New user, but account creation disabled. Cannot create user for user_token [' . $user_token . ']');
@@ -359,7 +363,7 @@ class SingleSignOnController extends ControllerBase
                             'mail' => $email,
                             'pass' => $user_password,
                             'init' => $email,
-                            'roles' => array ()
+                            'roles' => array()
                         ];
 
                         // Create a new user.
