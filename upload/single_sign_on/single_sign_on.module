@@ -10,6 +10,7 @@ use Drupal\field\Entity\FieldConfig;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
+use Drupal\Core\Database\Database;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Exception\ConnectException;
 
@@ -1835,7 +1836,7 @@ function single_sign_on_lookup_user_auth_cloud ($user, $password)
         else
         {
             // Add log.
-            single_sign_on_dump ('[TRY CLOUD LOGIN] [UID' . $uid . '] User has no local tokens, falling back to native authentication');
+            single_sign_on_dump ('[TRY CLOUD LOGIN] [UID' . $user->id() . '] User has no local tokens, falling back to native authentication');
         }
 
     }

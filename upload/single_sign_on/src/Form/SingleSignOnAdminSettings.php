@@ -2,6 +2,7 @@
 
 namespace Drupal\single_sign_on\Form;
 
+use Drupal\Core\Database\Database;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 
